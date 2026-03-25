@@ -23,7 +23,7 @@ const TEAMS_CFG = {
     emoji: '👹',
   },
   azul: { label: 'Azulões', color: '#3b82f6', dim: '#1e3a8a', emoji: '💎' },
-  amarelo: { label: 'Canarinhos', color: '#eab308', dim: '#422006', emoji: '🟡' },
+  amarelo: { label: 'Canarinhos', color: '#eab308', dim: '#422006', emoji: '🐤' },
   verde: { label: 'Máquina Verde', color: '#22c55e', dim: '#052e16', emoji: '🦖' },
 };
 

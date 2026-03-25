@@ -1356,6 +1356,24 @@ export default function App() {
 
   const paidCount = players.filter((p) => p.paid).length;
 
+  const liderTabela = (() => {
+    const mensalistas = players.filter((p) => (p.tipo || 'mensalista') === 'mensalista');
+    if (!mensalistas.length) return null;
+    const sorted = [...mensalistas].sort((a, b) => b.champ - a.champ || b.vice - a.vice || b.goals - a.goals);
+    return sorted[0];
+  })();
+
+  const bolaMurcha = (() => {
+    const totalJogos = Math.max(...players.map(p => p.pres), 1);
+    const elegiveis = players.filter((p) =>
+      (p.tipo || 'mensalista') === 'mensalista' &&
+      p.pres >= totalJogos * 0.5
+    );
+    if (!elegiveis.length) return null;
+    const sorted = [...elegiveis].sort((a, b) => a.champ - b.champ || a.goals - b.goals);
+    return sorted[0];
+  })();
+
   const currentChampionTeam = (() => {
     const a = parseInt(finale.sA, 10);
     const b = parseInt(finale.sB, 10);
@@ -1565,18 +1583,32 @@ export default function App() {
           <div style={{ fontSize: 10, color: '#555', letterSpacing: 1 }}>PIKINHA DA NOITE</div>
         </div>
 
-        {/* Card Pagamentos */}
+        {/* Card Líder da Tabela */}
         <div className="card" style={{ textAlign: 'center', padding: 14 }}>
-          <div style={{ fontSize: 22 }}>💰</div>
-          <div style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 24, color: '#4ade80', margin: '4px 0' }}>{paidCount}/{players.length}</div>
-          <div style={{ fontSize: 10, color: '#555', letterSpacing: 1 }}>PAGAMENTOS</div>
+          <div style={{ fontSize: 22 }}>🥇</div>
+          <div style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: liderTabela && liderTabela.name.length > 10 ? 16 : 24, color: '#f59e0b', margin: '4px 0', lineHeight: 1.1 }}>
+            {liderTabela ? liderTabela.name : '—'}
+          </div>
+          {liderTabela && (
+            <div style={{ fontSize: 11, color: '#f59e0b', fontWeight: 700, marginBottom: 2 }}>
+              {liderTabela.champ} 🏆 · {liderTabela.goals} ⚽
+            </div>
+          )}
+          <div style={{ fontSize: 10, color: '#555', letterSpacing: 1 }}>LÍDER DA TABELA</div>
         </div>
 
-        {/* Card Times */}
+        {/* Card Bola Murcha */}
         <div className="card" style={{ textAlign: 'center', padding: 14 }}>
-          <div style={{ fontSize: 22 }}>🎲</div>
-          <div style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 24, color: '#4ade80', margin: '4px 0' }}>{drawn ? 'SORTEADO' : 'PENDENTE'}</div>
-          <div style={{ fontSize: 10, color: '#555', letterSpacing: 1 }}>TIMES</div>
+          <div style={{ fontSize: 22 }}>😵</div>
+          <div style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: bolaMurcha && bolaMurcha.name.length > 10 ? 16 : 24, color: '#ef4444', margin: '4px 0', lineHeight: 1.1 }}>
+            {bolaMurcha ? bolaMurcha.name : '—'}
+          </div>
+          {bolaMurcha && (
+            <div style={{ fontSize: 11, color: '#ef4444', fontWeight: 700, marginBottom: 2 }}>
+              {bolaMurcha.champ} 🏆 · {bolaMurcha.pres} ✅
+            </div>
+          )}
+          <div style={{ fontSize: 10, color: '#555', letterSpacing: 1 }}>BOLA MURCHA</div>
         </div>
       </div>
 

@@ -1,18 +1,4 @@
 import { useState, useEffect, useRef } from 'react';
-import { initializeApp } from 'firebase/app';
-import { getFirestore, doc, getDoc, setDoc } from 'firebase/firestore';
-
-const firebaseConfig = {
-  apiKey: "AIzaSyBlXvCW5rrdTbgTSxMt5lIgs80eH4RAWvE",
-  authDomain: "fominhas-league.firebaseapp.com",
-  projectId: "fominhas-league",
-  storageBucket: "fominhas-league.firebasestorage.app",
-  messagingSenderId: "259341849200",
-  appId: "1:259341849200:web:0ab82248835a6daa57dab5"
-};
-
-const firebaseApp = initializeApp(firebaseConfig);
-const db = getFirestore(firebaseApp);
 
 // ============ CONSTANTS ============
 
@@ -1203,6 +1189,7 @@ export default function App() {
   const [ausenteInput, setAusenteInput] = useState({ id: '', motivo: '' });
   const [showAusAdd, setShowAusAdd] = useState(false);
   const [confirmDesfazer, setConfirmDesfazer] = useState(false);
+  const [lastResetAt, setLastResetAt] = useState('');
   const [caixaSubTab, setCaixaSubTab] = useState('pagamentos');
   const [appliedMatch, setAppliedMatch] = useState(null);
 
@@ -1210,47 +1197,52 @@ export default function App() {
   useEffect(() => {
     (async () => {
       try {
-        const ref = doc(db, 'app', 'state');
-        const snap = await getDoc(ref);
-        if (snap.exists()) {
-          const data = snap.data();
-          const load = (k) => {
-            try {
-              const v = data[k];
-              return v ? JSON.parse(v) : null;
-            } catch (e) { return null; }
-          };
-          const pl = load('fm_players');
-          if (pl) setPlayers(pl);
-          const dr = load('fm_drawn');
-          if (dr) setDrawn(dr);
-          const ac = load('fm_active');
-          if (ac) setActive(ac);
-          const ro = load('fm_rounds');
-          if (ro) setRounds(ro);
-          const fi = load('fm_finale');
-          if (fi) setFinale(fi);
-          const sc = load('fm_scorers');
-          if (sc) setScorers(sc);
-          const co = load('fm_coletes');
-          if (co) setColetes(co);
-          const li = load('fm_lista');
-          if (li) setLista(li);
-          const cm = load('fm_appliedMatch');
-          if (cm) setAppliedMatch(cm);
-          const cs = load('fm_caixaSubTab');
-          if (cs) setCaixaSubTab(cs);
-        }
-      } catch (e) { console.error('Erro Firestore:', e); }
+        const load = async (k) => {
+          try {
+            const r = await window.storage.get(k);
+            if (r && typeof r.value === 'string') return JSON.parse(r.value);
+          } catch (e) {}
+          try {
+            const raw = window.localStorage.getItem(k);
+            return raw ? JSON.parse(raw) : null;
+          } catch (e) {
+            return null;
+          }
+        };
+        const pl = await load('fm_players');
+        if (pl) setPlayers(pl);
+        const dr = await load('fm_drawn');
+        if (dr) setDrawn(dr);
+        const ac = await load('fm_active');
+        if (ac) setActive(ac);
+        const ro = await load('fm_rounds');
+        if (ro) setRounds(ro);
+        const fi = await load('fm_finale');
+        if (fi) setFinale(fi);
+        const sc = await load('fm_scorers');
+        if (sc) setScorers(sc);
+        const co = await load('fm_coletes');
+        if (co) setColetes(co);
+        const li = await load('fm_lista');
+        if (li) setLista(li);
+        const lr = await load('fm_lastReset');
+        if (lr) setLastResetAt(lr);
+        const cm = await load('fm_appliedMatch');
+        if (cm) setAppliedMatch(cm);
+        const cs = await load('fm_caixaSubTab');
+        if (cs) setCaixaSubTab(cs);
+      } catch (e) {}
     })();
   }, []);
 
   const save = async (k, v) => {
     const raw = JSON.stringify(v);
     try {
-      const ref = doc(db, 'app', 'state');
-      await setDoc(ref, { [k]: raw }, { merge: true });
-    } catch (e) { console.error('Erro ao salvar:', e); }
+      await window.storage.set(k, raw);
+    } catch (e) {}
+    try {
+      window.localStorage.setItem(k, raw);
+    } catch (e) {}
   };
 
   // Helpers
@@ -1321,27 +1313,36 @@ export default function App() {
     });
   };
 
-  };
-
-  const resetSemana = async () => {
-    const freshLista = {
-      date: new Date().toISOString().split('T')[0],
-      slots: [],
-      ausentes: [],
+  useEffect(() => {
+    const checkReset = async () => {
+      const now = new Date();
+      if (now.getDay() !== 1 || now.getHours() < 22) return;
+      const key = now.toISOString().slice(0, 13);
+      if (lastResetAt === key) return;
+      const freshLista = {
+        date: now.toISOString().split('T')[0],
+        slots: [],
+        ausentes: [],
+      };
+      setDrawn(null);
+      setRounds(INIT_ROUNDS);
+      setFinale(INIT_FINAL);
+      setScorers({});
+      setLista(freshLista);
+      setLastResetAt(key);
+      await save('fm_drawn', null);
+      await save('fm_rounds', INIT_ROUNDS);
+      await save('fm_finale', INIT_FINAL);
+      await save('fm_scorers', {});
+      await save('fm_lista', freshLista);
+      await save('fm_lastReset', key);
+      await save('fm_appliedMatch', null);
+      setAppliedMatch(null);
     };
-    setDrawn(null);
-    setRounds(INIT_ROUNDS);
-    setFinale(INIT_FINAL);
-    setScorers({});
-    setLista(freshLista);
-    setAppliedMatch(null);
-    await save('fm_drawn', null);
-    await save('fm_rounds', INIT_ROUNDS);
-    await save('fm_finale', INIT_FINAL);
-    await save('fm_scorers', {});
-    await save('fm_lista', freshLista);
-    await save('fm_appliedMatch', null);
-  };
+    checkReset();
+    const iv = setInterval(checkReset, 60000);
+    return () => clearInterval(iv);
+  }, [lastResetAt]);
 
   const paidCount = players.filter((p) => p.paid).length;
 
@@ -1447,6 +1448,23 @@ export default function App() {
     alert('Partida salva e tabela atualizada.');
   };
 
+  const resetSemana = async () => {
+    if (!confirm('Zerar a semana?\n\nLista, sorteio e placares serao apagados.\nA Tabela Geral NAO sera afetada.')) return;
+    const freshLista = { date: new Date().toISOString().split('T')[0], slots: [], ausentes: [] };
+    setDrawn(null);
+    setRounds(INIT_ROUNDS);
+    setFinale(INIT_FINAL);
+    setScorers({});
+    setLista(freshLista);
+    setAppliedMatch(null);
+    await save('fm_drawn', null);
+    await save('fm_rounds', INIT_ROUNDS);
+    await save('fm_finale', INIT_FINAL);
+    await save('fm_scorers', {});
+    await save('fm_lista', freshLista);
+    await save('fm_appliedMatch', null);
+  };
+
   const preserveContentScroll = (updater) => {
     const el = scrollRef.current;
     const top = el?.scrollTop || 0;
@@ -1493,47 +1511,43 @@ export default function App() {
           marginBottom: 16,
         }}
       >
-        {/* Card Campeão */}
-        <div className="card" style={{ textAlign: 'center', padding: 14 }}>
-          <div style={{ fontSize: 22 }}>🏆</div>
-          <div style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 24, color: currentChampionTeam ? TEAMS_CFG[currentChampionTeam].color : '#4ade80', margin: '4px 0' }}>
-            {currentChampionTeam ? TEAMS_CFG[currentChampionTeam].label : '—'}
-          </div>
-          <div style={{ fontSize: 10, color: '#555', letterSpacing: 1 }}>CAMPEÃO DA SEMANA</div>
-          {currentChampionTeam && drawn && (
-            <div style={{ marginTop: 8, display: 'flex', flexWrap: 'wrap', gap: 3, justifyContent: 'center' }}>
-              {(drawn[currentChampionTeam] || []).filter(p => !p.isPending).map(p => (
-                <span key={p.id} style={{ fontSize: 9, fontWeight: 700, color: TEAMS_CFG[currentChampionTeam].color, background: TEAMS_CFG[currentChampionTeam].color + '1a', border: `1px solid ${TEAMS_CFG[currentChampionTeam].color}33`, borderRadius: 4, padding: '1px 5px' }}>
-                  {p.name}
-                </span>
-              ))}
+        {[
+          {
+            i: '🏆',
+            v: currentChampionTeam ? TEAMS_CFG[currentChampionTeam].label : '—',
+            l: 'CAMPEÃO DA SEMANA',
+          },
+          {
+            i: '⚽',
+            v: currentTopScorer
+              ? `${currentTopScorer.name} (${currentTopScorer.goals})`
+              : '—',
+            l: 'ARTILHEIRO DA SEMANA',
+          },
+          { i: '💰', v: `${paidCount}/${players.length}`, l: 'PAGAMENTOS' },
+          { i: '🎲', v: drawn ? 'SORTEADO' : 'PENDENTE', l: 'TIMES' },
+        ].map(({ i, v, l }, idx) => (
+          <div
+            key={idx}
+            className="card"
+            style={{ textAlign: 'center', padding: 14 }}
+          >
+            <div style={{ fontSize: 22 }}>{i}</div>
+            <div
+              style={{
+                fontFamily: "'Bebas Neue',sans-serif",
+                fontSize: 24,
+                color: '#4ade80',
+                margin: '4px 0',
+              }}
+            >
+              {v}
             </div>
-          )}
-        </div>
-
-        {/* Card Artilheiro */}
-        <div className="card" style={{ textAlign: 'center', padding: 14 }}>
-          <div style={{ fontSize: 22 }}>⚽</div>
-          <div style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: currentTopScorer && currentTopScorer.name.length > 10 ? 16 : 24, color: '#4ade80', margin: '4px 0', lineHeight: 1.1 }}>
-            {currentTopScorer ? currentTopScorer.name : '—'}
+            <div style={{ fontSize: 10, color: '#555', letterSpacing: 1 }}>
+              {l}
+            </div>
           </div>
-          {currentTopScorer && <div style={{ fontSize: 11, color: '#4ade80', fontWeight: 700, marginBottom: 2 }}>{currentTopScorer.goals} gols</div>}
-          <div style={{ fontSize: 10, color: '#555', letterSpacing: 1 }}>ARTILHEIRO DA SEMANA</div>
-        </div>
-
-        {/* Card Pagamentos */}
-        <div className="card" style={{ textAlign: 'center', padding: 14 }}>
-          <div style={{ fontSize: 22 }}>💰</div>
-          <div style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 24, color: '#4ade80', margin: '4px 0' }}>{paidCount}/{players.length}</div>
-          <div style={{ fontSize: 10, color: '#555', letterSpacing: 1 }}>PAGAMENTOS</div>
-        </div>
-
-        {/* Card Times */}
-        <div className="card" style={{ textAlign: 'center', padding: 14 }}>
-          <div style={{ fontSize: 22 }}>🎲</div>
-          <div style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 24, color: '#4ade80', margin: '4px 0' }}>{drawn ? 'SORTEADO' : 'PENDENTE'}</div>
-          <div style={{ fontSize: 10, color: '#555', letterSpacing: 1 }}>TIMES</div>
-        </div>
+        ))}
       </div>
 
       {drawn && (
@@ -1923,30 +1937,6 @@ export default function App() {
       updateDrawn(drawTeams(allRealPlayers));
     };
 
-    const [movePlayer, setMovePlayer] = useState(null); // { playerId, fromTeam }
-
-    const movePlayerBetweenTeams = (playerId, fromTeam, toTeam) => {
-      if (!drawn || fromTeam === toTeam) return;
-      const player = drawn[fromTeam]?.find(p => p.id === playerId);
-      if (!player) return;
-
-      // Remove pendentes e monta times só com jogadores reais
-      const newDrawn = {};
-      Object.keys(TEAMS_CFG).forEach(tk => {
-        newDrawn[tk] = (drawn[tk] || []).filter(p => !p.isPending && p.id !== playerId);
-      });
-      // Move o jogador pro novo time
-      if (toTeam) newDrawn[toTeam] = [...newDrawn[toTeam], player];
-
-      // Pega todos os jogadores reais pra calcular média geral
-      const allReal = Object.values(newDrawn).flat();
-
-      // Reaplica pendentes equilibrados
-      const balanced = fillPendingSlots(newDrawn, allReal);
-      updateDrawn(balanced);
-      setMovePlayer(null);
-    };
-
     return (
       <div>
         <div className="stitle">SORTEIO</div>
@@ -2217,78 +2207,27 @@ export default function App() {
                             {p.isPending ? 'sug.' : 'méd'} {avg}
                           </span>
                           {isAdmin && !p.isPending && (
-                            <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
-                              {movePlayer?.playerId === p.id ? (
-                                <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-                                  {Object.entries(TEAMS_CFG).filter(([tk]) => tk !== k).map(([tk, tc]) => (
-                                    <button
-                                      key={tk}
-                                      onClick={() => movePlayerBetweenTeams(p.id, k, tk)}
-                                      style={{
-                                        background: tc.color + '22',
-                                        border: `1px solid ${tc.color}66`,
-                                        color: tc.color,
-                                        borderRadius: 6,
-                                        padding: '2px 7px',
-                                        fontSize: 11,
-                                        cursor: 'pointer',
-                                        fontWeight: 700,
-                                      }}
-                                    >
-                                      {tc.emoji}
-                                    </button>
-                                  ))}
-                                  <button
-                                    onClick={() => setMovePlayer(null)}
-                                    style={{ background: 'none', border: 'none', color: '#555', cursor: 'pointer', fontSize: 13, padding: '2px 4px' }}
-                                  >✕</button>
-                                </div>
-                              ) : (
-                                <>
-                                  <button
-                                    onClick={() => setMovePlayer({ playerId: p.id, fromTeam: k })}
-                                    title="Mover para outro time"
-                                    style={{
-                                      background: '#1a1a2e',
-                                      border: '1px solid #2a2a5a',
-                                      color: '#818cf8',
-                                      borderRadius: 6,
-                                      width: 22,
-                                      height: 22,
-                                      display: 'flex',
-                                      alignItems: 'center',
-                                      justifyContent: 'center',
-                                      cursor: 'pointer',
-                                      fontSize: 12,
-                                      padding: 0,
-                                    }}
-                                  >
-                                    ⇄
-                                  </button>
-                                  <button
-                                    onClick={() => removeFromTeam(k, p.id)}
-                                    title="Remover do time"
-                                    style={{
-                                      background: '#1a0a0a',
-                                      border: '1px solid #2a1212',
-                                      color: '#555',
-                                      borderRadius: 6,
-                                      width: 22,
-                                      height: 22,
-                                      display: 'flex',
-                                      alignItems: 'center',
-                                      justifyContent: 'center',
-                                      cursor: 'pointer',
-                                      fontSize: 12,
-                                      padding: 0,
-                                      lineHeight: 1,
-                                    }}
-                                  >
-                                    ✕
-                                  </button>
-                                </>
-                              )}
-                            </div>
+                            <button
+                              onClick={() => removeFromTeam(k, p.id)}
+                              title="Remover do time"
+                              style={{
+                                background: '#1a0a0a',
+                                border: '1px solid #2a1212',
+                                color: '#555',
+                                borderRadius: 6,
+                                width: 22,
+                                height: 22,
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                cursor: 'pointer',
+                                fontSize: 12,
+                                padding: 0,
+                                lineHeight: 1,
+                              }}
+                            >
+                              ✕
+                            </button>
                           )}
                         </div>
                       </div>
@@ -2788,44 +2727,24 @@ export default function App() {
           </div>
         </div>
 
-        {/* Botão Salvar Partida */}
+        {/* Salvar + Nova Semana */}
         {isAdmin && (
-          <div style={{ margin: '16px 0 8px' }}>
+          <div style={{ margin: '16px 0 4px' }}>
             <button
               className="btn"
-              style={{
-                background: appliedMatch
-                  ? 'linear-gradient(135deg,#064e3b,#059669)'
-                  : 'linear-gradient(135deg,#7c2d12,#ea580c)',
-              }}
+              style={{ background: appliedMatch ? 'linear-gradient(135deg,#064e3b,#059669)' : 'linear-gradient(135deg,#7c2d12,#ea580c)', marginBottom: 6 }}
               onClick={saveMatchResults}
             >
               {appliedMatch ? '✅ PARTIDA SALVA — ATUALIZAR' : '💾 SALVAR PARTIDA E ATUALIZAR TABELA'}
             </button>
             {appliedMatch && (
-              <div style={{ fontSize: 11, color: '#059669', textAlign: 'center', marginTop: 6 }}>
+              <div style={{ fontSize: 11, color: '#059669', textAlign: 'center', marginBottom: 6 }}>
                 Salvo em {new Date(appliedMatch.savedAt).toLocaleString('pt-BR')}
               </div>
             )}
             <button
-              style={{
-                marginTop: 10,
-                width: '100%',
-                background: 'none',
-                border: '1px solid #3a1a1a',
-                borderRadius: 10,
-                color: '#ef4444',
-                padding: '10px',
-                fontFamily: "'Barlow',sans-serif",
-                fontWeight: 700,
-                fontSize: 13,
-                cursor: 'pointer',
-                letterSpacing: 0.5,
-              }}
-              onClick={() => {
-                if (!confirm('Zerar a semana? Lista, sorteio e placares serão apagados.\nA Tabela Geral NÃO será afetada.')) return;
-                resetSemana();
-              }}
+              onClick={resetSemana}
+              style={{ width: '100%', background: 'none', border: '1px solid #3a1a1a', borderRadius: 10, color: '#ef4444', padding: '10px', fontFamily: "'Barlow',sans-serif", fontWeight: 700, fontSize: 13, cursor: 'pointer', letterSpacing: 0.5 }}
             >
               🔄 NOVA SEMANA (zerar lista, sorteio e placares)
             </button>

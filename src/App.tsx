@@ -1324,36 +1324,27 @@ export default function App() {
     });
   };
 
-  useEffect(() => {
-    const checkReset = async () => {
-      const now = new Date();
-      if (now.getDay() !== 1 || now.getHours() < 22) return;
-      const key = now.toISOString().slice(0, 13);
-      if (lastResetAt === key) return;
-      const freshLista = {
-        date: now.toISOString().split('T')[0],
-        slots: [],
-        ausentes: [],
-      };
-      setDrawn(null);
-      setRounds(INIT_ROUNDS);
-      setFinale(INIT_FINAL);
-      setScorers({});
-      setLista(freshLista);
-      setLastResetAt(key);
-      await save('fm_drawn', null);
-      await save('fm_rounds', INIT_ROUNDS);
-      await save('fm_finale', INIT_FINAL);
-      await save('fm_scorers', {});
-      await save('fm_lista', freshLista);
-      await save('fm_lastReset', key);
-      await save('fm_appliedMatch', null);
-      setAppliedMatch(null);
+  };
+
+  const resetSemana = async () => {
+    const freshLista = {
+      date: new Date().toISOString().split('T')[0],
+      slots: [],
+      ausentes: [],
     };
-    checkReset();
-    const iv = setInterval(checkReset, 60000);
-    return () => clearInterval(iv);
-  }, [lastResetAt]);
+    setDrawn(null);
+    setRounds(INIT_ROUNDS);
+    setFinale(INIT_FINAL);
+    setScorers({});
+    setLista(freshLista);
+    setAppliedMatch(null);
+    await save('fm_drawn', null);
+    await save('fm_rounds', INIT_ROUNDS);
+    await save('fm_finale', INIT_FINAL);
+    await save('fm_scorers', {});
+    await save('fm_lista', freshLista);
+    await save('fm_appliedMatch', null);
+  };
 
   const paidCount = players.filter((p) => p.paid).length;
 
@@ -2819,6 +2810,28 @@ export default function App() {
                 Salvo em {new Date(appliedMatch.savedAt).toLocaleString('pt-BR')}
               </div>
             )}
+            <button
+              style={{
+                marginTop: 10,
+                width: '100%',
+                background: 'none',
+                border: '1px solid #3a1a1a',
+                borderRadius: 10,
+                color: '#ef4444',
+                padding: '10px',
+                fontFamily: "'Barlow',sans-serif",
+                fontWeight: 700,
+                fontSize: 13,
+                cursor: 'pointer',
+                letterSpacing: 0.5,
+              }}
+              onClick={() => {
+                if (!confirm('Zerar a semana? Lista, sorteio e placares serão apagados.\nA Tabela Geral NÃO será afetada.')) return;
+                resetSemana();
+              }}
+            >
+              🔄 NOVA SEMANA (zerar lista, sorteio e placares)
+            </button>
           </div>
         )}
 

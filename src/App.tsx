@@ -532,12 +532,12 @@ function calcStandings(rounds) {
 const CSS = `
 @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Barlow:wght@400;600;700;900&display=swap');
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:'Barlow',sans-serif;background:#080808;color:#f0f0f0;overflow:hidden;height:100vh}
-.app{display:flex;flex-direction:column;height:100vh;max-width:480px;margin:0 auto;background:#0a0a0a;position:relative}
+body{font-family:'Barlow',sans-serif;background:#080808;color:#f0f0f0;overflow:hidden;height:100vh;height:100dvh}
+.app{display:flex;flex-direction:column;height:100vh;height:100dvh;max-width:480px;margin:0 auto;background:#0a0a0a;position:relative}
 .hdr{background:linear-gradient(135deg,#0f0f0f,#1a1a1a);border-bottom:1px solid #222;padding:12px 16px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
 .hdr-title{font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:2px;background:linear-gradient(90deg,#4ade80,#22c55e);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
 .hdr-sub{font-size:10px;color:#444;letter-spacing:1px;text-transform:uppercase}
-.content{flex:1;overflow-y:auto;padding:16px;padding-bottom:80px}
+.content{flex:1;overflow-y:auto;padding:16px;padding-bottom:120px}
 .bnav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:480px;background:#0f0f0f;border-top:1px solid #1f1f1f;display:flex;z-index:100}
 .ntab{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:8px 1px 6px;background:none;border:none;cursor:pointer;color:#444;transition:color .2s;font-family:'Barlow',sans-serif}
 .ntab.on{color:#4ade80}

@@ -1242,7 +1242,17 @@ export default function App() {
         const cs = load('fm_caixaSubTab');
         if (cs) setCaixaSubTab(cs);
         const mh = load('fm_matchHistory');
-        if (mh) setMatchHistory(mh);
+        if (mh) {
+          // Dedup by date, keep first occurrence (most recent save)
+          const seen = new Set();
+          const deduped = mh.filter(h => {
+            if (seen.has(h.date)) return false;
+            seen.add(h.date);
+            return true;
+          });
+          setMatchHistory(deduped);
+          if (deduped.length !== mh.length) save('fm_matchHistory', deduped);
+        }
       } catch (e) { console.error('Erro Firestore:', e); }
     })();
   }, []);
@@ -1495,7 +1505,14 @@ export default function App() {
       finalScore: { tA: finale.tA, sA: finale.sA, tB: finale.tB, sB: finale.sB },
       rounds: rounds.map(r => ({ id: r.id, pairs: r.pairs.map(p => ({ ...p })) })),
     };
-    const newHistory = [entry, ...matchHistory].slice(0, 52);
+    // Se já existe entrada com a mesma data, atualiza; senão adiciona nova
+    const existingIndex = matchHistory.findIndex(h => h.date === entry.date);
+    let newHistory;
+    if (existingIndex >= 0) {
+      newHistory = matchHistory.map((h, i) => i === existingIndex ? { ...entry, id: h.id } : h);
+    } else {
+      newHistory = [entry, ...matchHistory].slice(0, 52);
+    }
     setMatchHistory(newHistory);
     save('fm_matchHistory', newHistory);
 

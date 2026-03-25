@@ -1520,6 +1520,11 @@ export default function App() {
   };
 
   const resetSemana = async () => {
+    const hoje = new Date().getDay();
+    if (hoje !== 6) {
+      alert('A nova semana só pode ser iniciada no Sábado! 📅');
+      return;
+    }
     if (!confirm('Zerar a semana?\n\nLista, sorteio e placares serao apagados.\nA Tabela Geral NAO sera afetada.')) return;
     const freshLista = { date: new Date().toISOString().split('T')[0], slots: [], ausentes: [] };
     setDrawn(null); setRounds(INIT_ROUNDS); setFinale(INIT_FINAL);

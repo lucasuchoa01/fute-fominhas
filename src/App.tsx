@@ -3195,9 +3195,127 @@ export default function App() {
       .sort(
         (a, b) => b.champ - a.champ || b.vice - a.vice || b.goals - a.goals
       );
+
+    const downloadImage = () => {
+      const scale = 2;
+      const W = 440, rowH = 44, headerH = 52, titleH = 56, footerH = 32;
+      const totalH = titleH + headerH + rowH * sorted.length + footerH;
+      const canvas = document.createElement('canvas');
+      canvas.width = W * scale;
+      canvas.height = totalH * scale;
+      const ctx = canvas.getContext('2d');
+      ctx.scale(scale, scale);
+
+      // Background
+      ctx.fillStyle = '#0a0a0a';
+      ctx.fillRect(0, 0, W, totalH);
+
+      // Title bar
+      ctx.fillStyle = '#111';
+      ctx.fillRect(0, 0, W, titleH);
+      ctx.font = 'bold 11px Arial';
+      ctx.fillStyle = '#4ade80';
+      ctx.textAlign = 'center';
+      ctx.fillText('FOMINHAS LEAGUE', W / 2, 22);
+      ctx.font = 'bold 18px Arial';
+      ctx.fillStyle = '#4ade80';
+      ctx.fillText('TABELA GERAL', W / 2, 44);
+
+      // Header row
+      const cols = [
+        { label: '#', x: 28, w: 36, align: 'center' },
+        { label: 'NOME', x: 80, w: 160, align: 'left' },
+        { label: '🏆', x: 240, w: 50, align: 'center' },
+        { label: '🥈', x: 290, w: 50, align: 'center' },
+        { label: '⚽', x: 340, w: 50, align: 'center' },
+        { label: '✅', x: 390, w: 50, align: 'center' },
+      ];
+      ctx.fillStyle = '#1a1a1a';
+      ctx.fillRect(0, titleH, W, headerH);
+      ctx.font = 'bold 10px Arial';
+      ctx.fillStyle = '#555';
+      cols.forEach(col => {
+        ctx.textAlign = col.align;
+        ctx.fillText(col.label, col.align === 'center' ? col.x + col.w / 2 - 8 : col.x, titleH + headerH / 2 + 4);
+      });
+
+      // Rows
+      const rankColors = { A: '#f59e0b', B: '#f97316', C: '#3b82f6', D: '#6b7280', E: '#374151' };
+      const posColors = ['#f59e0b', '#94a3b8', '#cd7c4b'];
+
+      sorted.forEach((p, i) => {
+        const y = titleH + headerH + rowH * i;
+        ctx.fillStyle = i % 2 === 0 ? '#111' : '#141414';
+        ctx.fillRect(0, y, W, rowH);
+
+        // separator
+        ctx.fillStyle = '#1f1f1f';
+        ctx.fillRect(0, y + rowH - 1, W, 1);
+
+        const cy = y + rowH / 2 + 5;
+
+        // Position
+        ctx.font = 'bold 16px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillStyle = posColors[i] || '#444';
+        ctx.fillText(String(i + 1), 46, cy);
+
+        // Ranking badge
+        const rankColor = rankColors[p.ranking] || '#555';
+        ctx.fillStyle = rankColor + '33';
+        ctx.beginPath();
+        ctx.roundRect(64, y + 10, 22, 18, 4);
+        ctx.fill();
+        ctx.font = 'bold 10px Arial';
+        ctx.fillStyle = rankColor;
+        ctx.textAlign = 'center';
+        ctx.fillText(p.ranking, 75, y + 23);
+
+        // Name
+        ctx.font = '600 13px Arial';
+        ctx.fillStyle = '#eee';
+        ctx.textAlign = 'left';
+        ctx.fillText(p.name, 92, cy);
+
+        // Stats
+        const stats = [p.champ, p.vice, p.goals, p.pres];
+        const statColors = ['#f59e0b', '#94a3b8', '#4ade80', '#555'];
+        [240, 290, 340, 390].forEach((x, si) => {
+          ctx.font = 'bold 15px Arial';
+          ctx.fillStyle = statColors[si];
+          ctx.textAlign = 'center';
+          ctx.fillText(String(stats[si]), x + 17, cy);
+        });
+      });
+
+      // Footer
+      const fy = titleH + headerH + rowH * sorted.length;
+      ctx.fillStyle = '#111';
+      ctx.fillRect(0, fy, W, footerH);
+      ctx.font = '10px Arial';
+      ctx.fillStyle = '#333';
+      ctx.textAlign = 'center';
+      const today = new Date().toLocaleDateString('pt-BR');
+      ctx.fillText(`Gerado em ${today} · Depois das Dez FS`, W / 2, fy + 20);
+
+      // Download
+      const link = document.createElement('a');
+      link.download = `tabela-fominhas-${new Date().toISOString().slice(0,10)}.png`;
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+    };
+
     return (
       <div>
-        <div className="stitle">TABELA GERAL</div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+          <div className="stitle" style={{ margin: 0 }}>TABELA GERAL</div>
+          <button
+            onClick={downloadImage}
+            style={{ background: '#141414', border: '1px solid #2a2a2a', borderRadius: 8, padding: '7px 14px', color: '#4ade80', fontSize: 12, cursor: 'pointer', fontFamily: "'Barlow',sans-serif", fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6 }}
+          >
+            📥 BAIXAR
+          </button>
+        </div>
         <div
           style={{
             borderRadius: 10,

@@ -2019,6 +2019,7 @@ export default function App() {
           </div>
 
           {/* Botões principais */}
+          {isAdmin && (
           <div style={{ display: 'flex', gap: 8 }}>
             <button className="btn" style={{ flex: 1 }} onClick={doShuffle}>
               {drawn ? '🔀 REFAZER' : '🎲 SORTEAR TIMES'}
@@ -2044,6 +2045,7 @@ export default function App() {
               </button>
             )}
           </div>
+          )}
 
           {/* Confirmação desfazer */}
           {confirmDesfazer && (

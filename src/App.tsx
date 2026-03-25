@@ -17,14 +17,14 @@ const db = getFirestore(firebaseApp);
 
 const TEAMS_CFG = {
   vermelho: {
-    label: 'Vermelho',
+    label: 'Diabos Vermelhos',
     color: '#ef4444',
     dim: '#450a0a',
-    emoji: '🔴',
+    emoji: '👹',
   },
-  azul: { label: 'Azul', color: '#3b82f6', dim: '#1e3a8a', emoji: '🔵' },
-  amarelo: { label: 'Amarelo', color: '#eab308', dim: '#422006', emoji: '🟡' },
-  verde: { label: 'Verde', color: '#22c55e', dim: '#052e16', emoji: '🟢' },
+  azul: { label: 'Azulões', color: '#3b82f6', dim: '#1e3a8a', emoji: '💎' },
+  amarelo: { label: 'Canarinhos', color: '#eab308', dim: '#422006', emoji: '🟡' },
+  verde: { label: 'Máquina Verde', color: '#22c55e', dim: '#052e16', emoji: '🦖' },
 };
 
 const RANK_COLOR = {

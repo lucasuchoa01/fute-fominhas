@@ -1206,6 +1206,8 @@ export default function App() {
   const [lastResetAt, setLastResetAt] = useState('');
   const [caixaSubTab, setCaixaSubTab] = useState('pagamentos');
   const [appliedMatch, setAppliedMatch] = useState(null);
+  const [matchHistory, setMatchHistory] = useState([]);
+  const [showHistory, setShowHistory] = useState(false);
 
   // Load storage
   useEffect(() => {
@@ -1240,6 +1242,8 @@ export default function App() {
         if (cm) setAppliedMatch(cm);
         const cs = await load('fm_caixaSubTab');
         if (cs) setCaixaSubTab(cs);
+        const mh = await load('fm_matchHistory');
+        if (mh) setMatchHistory(mh);
       } catch (e) { console.error('Erro Firestore:', e); }
     })();
   }, []);
@@ -1452,6 +1456,29 @@ export default function App() {
     updatePlayers(updated);
     setAppliedMatch(snapshot);
     save('fm_appliedMatch', snapshot);
+
+    // Save to history
+    const topScorer = (() => {
+      const entries = Object.entries(normalizedGoals);
+      if (!entries.length) return null;
+      const [topId, topGoals] = entries.sort((a,b) => b[1]-a[1])[0];
+      const p = players.find(pl => pl.id === Number(topId));
+      return p ? { name: p.name, goals: topGoals } : null;
+    })();
+    const champPlayers = champIds.map(id => players.find(p => p.id === id)?.name).filter(Boolean);
+    const entry = {
+      id: Date.now(),
+      date: lista.date,
+      champTeam,
+      champPlayers,
+      topScorer,
+      finalScore: { tA: finale.tA, sA: finale.sA, tB: finale.tB, sB: finale.sB },
+      rounds: rounds.map(r => ({ id: r.id, pairs: r.pairs.map(p => ({ ...p })) })),
+    };
+    const newHistory = [entry, ...matchHistory].slice(0, 52);
+    setMatchHistory(newHistory);
+    save('fm_matchHistory', newHistory);
+
     alert('Partida salva e tabela atualizada.');
   };
 
@@ -2274,6 +2301,65 @@ export default function App() {
     );
   };
 
+  // ── HISTORY ENTRY ────────────────────────────────────────────────────────────
+  const HistoryEntry = ({ h }) => {
+    const [open, setOpen] = useState(false);
+    const fmtDate = (iso) => {
+      if (!iso) return '';
+      const [y, m, d] = iso.split('-');
+      return `${d}/${m}/${y.slice(2)}`;
+    };
+    const cfg = h.champTeam ? TEAMS_CFG[h.champTeam] : null;
+    return (
+      <div style={{ background: '#141414', border: '1px solid #222', borderRadius: 10, marginBottom: 8, overflow: 'hidden' }}>
+        <button
+          onClick={() => setOpen(o => !o)}
+          style={{ width: '100%', background: 'none', border: 'none', padding: '12px 14px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}
+        >
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 4 }}>
+            <span style={{ fontSize: 11, color: '#555', fontWeight: 700 }}>📅 {fmtDate(h.date)}</span>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              {cfg && <span style={{ fontSize: 12, fontWeight: 700, color: cfg.color }}>{cfg.emoji} {cfg.label}</span>}
+              {h.finalScore && <span style={{ fontSize: 11, color: '#777' }}>{TEAMS_CFG[h.finalScore.tA]?.emoji} {h.finalScore.sA} × {h.finalScore.sB} {TEAMS_CFG[h.finalScore.tB]?.emoji}</span>}
+              {h.topScorer && <span style={{ fontSize: 11, color: '#4ade80' }}>⚽ {h.topScorer.name} ({h.topScorer.goals})</span>}
+            </div>
+          </div>
+          <span style={{ color: '#444', fontSize: 12 }}>{open ? '▲' : '▼'}</span>
+        </button>
+        {open && (
+          <div style={{ borderTop: '1px solid #222', padding: '10px 14px' }}>
+            {h.champPlayers?.length > 0 && (
+              <div style={{ marginBottom: 8 }}>
+                <div style={{ fontSize: 10, color: '#555', letterSpacing: 1, marginBottom: 4 }}>🏆 CAMPEÕES</div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                  {h.champPlayers.map((n, i) => (
+                    <span key={i} style={{ fontSize: 11, color: cfg?.color || '#4ade80', background: (cfg?.color || '#4ade80') + '1a', border: `1px solid ${(cfg?.color || '#4ade80')}33`, borderRadius: 4, padding: '1px 6px' }}>{n}</span>
+                  ))}
+                </div>
+              </div>
+            )}
+            {h.rounds?.map(r => (
+              <div key={r.id} style={{ marginBottom: 6 }}>
+                <div style={{ fontSize: 9, color: '#444', letterSpacing: 1, marginBottom: 3 }}>RODADA {r.id}</div>
+                {r.pairs.map((p, pi) => {
+                  const cA = TEAMS_CFG[p.tA], cB = TEAMS_CFG[p.tB];
+                  if (!cA || !cB) return null;
+                  return (
+                    <div key={pi} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, marginBottom: 2 }}>
+                      <span style={{ fontSize: 11, color: cA.color, fontWeight: 700 }}>{cA.emoji} {cA.label}</span>
+                      <span style={{ fontSize: 13, fontFamily: "'Bebas Neue',sans-serif", color: '#ccc' }}>{p.sA !== '' ? p.sA : '-'} × {p.sB !== '' ? p.sB : '-'}</span>
+                      <span style={{ fontSize: 11, color: cB.color, fontWeight: 700 }}>{cB.label} {cB.emoji}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  };
+
   // ── PARTIDA ──────────────────────────────────────────────────────────────────
   const TabPartida = () => {
     const standings = calcStandings(rounds);
@@ -2757,6 +2843,26 @@ export default function App() {
             >
               🔄 NOVA SEMANA (zerar lista, sorteio e placares)
             </button>
+          </div>
+        )}
+
+        {/* Histórico */}
+        {matchHistory.length > 0 && (
+          <div style={{ marginBottom: 12 }}>
+            <button
+              onClick={() => setShowHistory(h => !h)}
+              style={{ width: '100%', background: '#141414', border: '1px solid #2a2a2a', borderRadius: 10, color: '#888', padding: '10px', fontFamily: "'Barlow',sans-serif", fontWeight: 700, fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
+            >
+              <span>📋 HISTÓRICO DE PARTIDAS ({matchHistory.length})</span>
+              <span>{showHistory ? '▲' : '▼'}</span>
+            </button>
+            {showHistory && (
+              <div style={{ marginTop: 8 }}>
+                {matchHistory.map((h) => (
+                  <HistoryEntry key={h.id} h={h} />
+                ))}
+              </div>
+            )}
           </div>
         )}
 

@@ -2800,6 +2800,28 @@ export default function App() {
           </div>
         </div>
 
+        {/* Botão Salvar Partida */}
+        {isAdmin && (
+          <div style={{ margin: '16px 0 8px' }}>
+            <button
+              className="btn"
+              style={{
+                background: appliedMatch
+                  ? 'linear-gradient(135deg,#064e3b,#059669)'
+                  : 'linear-gradient(135deg,#7c2d12,#ea580c)',
+              }}
+              onClick={saveMatchResults}
+            >
+              {appliedMatch ? '✅ PARTIDA SALVA — ATUALIZAR' : '💾 SALVAR PARTIDA E ATUALIZAR TABELA'}
+            </button>
+            {appliedMatch && (
+              <div style={{ fontSize: 11, color: '#059669', textAlign: 'center', marginTop: 6 }}>
+                Salvo em {new Date(appliedMatch.savedAt).toLocaleString('pt-BR')}
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Artilharia */}
         <div
           style={{

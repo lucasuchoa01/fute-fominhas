@@ -1,18 +1,4 @@
 import { useState, useEffect, useRef } from 'react';
-import { initializeApp } from 'firebase/app';
-import { getFirestore, doc, getDoc, setDoc } from 'firebase/firestore';
-
-const firebaseConfig = {
-  apiKey: "AIzaSyBlXvCW5rrdTbgTSxMt5lIgs80eH4RAWvE",
-  authDomain: "fominhas-league.firebaseapp.com",
-  projectId: "fominhas-league",
-  storageBucket: "fominhas-league.firebasestorage.app",
-  messagingSenderId: "259341849200",
-  appId: "1:259341849200:web:0ab82248835a6daa57dab5"
-};
-
-const firebaseApp = initializeApp(firebaseConfig);
-const db = getFirestore(firebaseApp);
 
 // ============ CONSTANTS ============
 
@@ -1211,49 +1197,52 @@ export default function App() {
   useEffect(() => {
     (async () => {
       try {
-        const ref = doc(db, 'app', 'state');
-        const snap = await getDoc(ref);
-        if (snap.exists()) {
-          const data = snap.data();
-          const load = (k) => {
-            try {
-              const v = data[k];
-              return v ? JSON.parse(v) : null;
-            } catch (e) { return null; }
-          };
-          const pl = load('fm_players');
-          if (pl) setPlayers(pl);
-          const dr = load('fm_drawn');
-          if (dr) setDrawn(dr);
-          const ac = load('fm_active');
-          if (ac) setActive(ac);
-          const ro = load('fm_rounds');
-          if (ro) setRounds(ro);
-          const fi = load('fm_finale');
-          if (fi) setFinale(fi);
-          const sc = load('fm_scorers');
-          if (sc) setScorers(sc);
-          const co = load('fm_coletes');
-          if (co) setColetes(co);
-          const li = load('fm_lista');
-          if (li) setLista(li);
-          const lr = load('fm_lastReset');
-          if (lr) setLastResetAt(lr);
-          const cm = load('fm_appliedMatch');
-          if (cm) setAppliedMatch(cm);
-          const cs = load('fm_caixaSubTab');
-          if (cs) setCaixaSubTab(cs);
-        }
-      } catch (e) { console.error('Erro ao carregar Firestore:', e); }
+        const load = async (k) => {
+          try {
+            const r = await window.storage.get(k);
+            if (r && typeof r.value === 'string') return JSON.parse(r.value);
+          } catch (e) {}
+          try {
+            const raw = window.localStorage.getItem(k);
+            return raw ? JSON.parse(raw) : null;
+          } catch (e) {
+            return null;
+          }
+        };
+        const pl = await load('fm_players');
+        if (pl) setPlayers(pl);
+        const dr = await load('fm_drawn');
+        if (dr) setDrawn(dr);
+        const ac = await load('fm_active');
+        if (ac) setActive(ac);
+        const ro = await load('fm_rounds');
+        if (ro) setRounds(ro);
+        const fi = await load('fm_finale');
+        if (fi) setFinale(fi);
+        const sc = await load('fm_scorers');
+        if (sc) setScorers(sc);
+        const co = await load('fm_coletes');
+        if (co) setColetes(co);
+        const li = await load('fm_lista');
+        if (li) setLista(li);
+        const lr = await load('fm_lastReset');
+        if (lr) setLastResetAt(lr);
+        const cm = await load('fm_appliedMatch');
+        if (cm) setAppliedMatch(cm);
+        const cs = await load('fm_caixaSubTab');
+        if (cs) setCaixaSubTab(cs);
+      } catch (e) {}
     })();
   }, []);
 
   const save = async (k, v) => {
     const raw = JSON.stringify(v);
     try {
-      const ref = doc(db, 'app', 'state');
-      await setDoc(ref, { [k]: raw }, { merge: true });
-    } catch (e) { console.error('Erro ao salvar Firestore:', e); }
+      await window.storage.set(k, raw);
+    } catch (e) {}
+    try {
+      window.localStorage.setItem(k, raw);
+    } catch (e) {}
   };
 
   // Helpers
@@ -1505,43 +1494,74 @@ export default function App() {
           marginBottom: 16,
         }}
       >
-        {[
-          {
-            i: '🏆',
-            v: currentChampionTeam ? TEAMS_CFG[currentChampionTeam].label : '—',
-            l: 'CAMPEÃO DA SEMANA',
-          },
-          {
-            i: '⚽',
-            v: currentTopScorer
-              ? `${currentTopScorer.name} (${currentTopScorer.goals})`
-              : '—',
-            l: 'ARTILHEIRO DA SEMANA',
-          },
-          { i: '💰', v: `${paidCount}/${players.length}`, l: 'PAGAMENTOS' },
-          { i: '🎲', v: drawn ? 'SORTEADO' : 'PENDENTE', l: 'TIMES' },
-        ].map(({ i, v, l }, idx) => (
-          <div
-            key={idx}
-            className="card"
-            style={{ textAlign: 'center', padding: 14 }}
-          >
-            <div style={{ fontSize: 22 }}>{i}</div>
-            <div
-              style={{
-                fontFamily: "'Bebas Neue',sans-serif",
-                fontSize: 24,
-                color: '#4ade80',
-                margin: '4px 0',
-              }}
-            >
-              {v}
-            </div>
-            <div style={{ fontSize: 10, color: '#555', letterSpacing: 1 }}>
-              {l}
-            </div>
+        {/* Card Campeão */}
+        <div className="card" style={{ textAlign: 'center', padding: 14 }}>
+          <div style={{ fontSize: 22 }}>🏆</div>
+          <div style={{
+            fontFamily: "'Bebas Neue',sans-serif",
+            fontSize: 24,
+            color: currentChampionTeam ? TEAMS_CFG[currentChampionTeam].color : '#4ade80',
+            margin: '4px 0',
+          }}>
+            {currentChampionTeam ? TEAMS_CFG[currentChampionTeam].label : '—'}
           </div>
-        ))}
+          <div style={{ fontSize: 10, color: '#555', letterSpacing: 1 }}>CAMPEÃO DA SEMANA</div>
+          {currentChampionTeam && drawn && (
+            <div style={{ marginTop: 8, display: 'flex', flexWrap: 'wrap', gap: 3, justifyContent: 'center' }}>
+              {(drawn[currentChampionTeam] || []).filter(p => !p.isPending).map(p => (
+                <span key={p.id} style={{
+                  fontSize: 9,
+                  fontWeight: 700,
+                  color: TEAMS_CFG[currentChampionTeam].color,
+                  background: TEAMS_CFG[currentChampionTeam].color + '1a',
+                  border: `1px solid ${TEAMS_CFG[currentChampionTeam].color}33`,
+                  borderRadius: 4,
+                  padding: '1px 5px',
+                }}>
+                  {p.name}
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Card Artilheiro */}
+        <div className="card" style={{ textAlign: 'center', padding: 14 }}>
+          <div style={{ fontSize: 22 }}>⚽</div>
+          <div style={{
+            fontFamily: "'Bebas Neue',sans-serif",
+            fontSize: currentTopScorer && currentTopScorer.name.length > 10 ? 16 : 24,
+            color: '#4ade80',
+            margin: '4px 0',
+            lineHeight: 1.1,
+          }}>
+            {currentTopScorer ? currentTopScorer.name : '—'}
+          </div>
+          {currentTopScorer && (
+            <div style={{ fontSize: 11, color: '#4ade80', fontWeight: 700, marginBottom: 2 }}>
+              {currentTopScorer.goals} gols
+            </div>
+          )}
+          <div style={{ fontSize: 10, color: '#555', letterSpacing: 1 }}>ARTILHEIRO DA SEMANA</div>
+        </div>
+
+        {/* Card Pagamentos */}
+        <div className="card" style={{ textAlign: 'center', padding: 14 }}>
+          <div style={{ fontSize: 22 }}>💰</div>
+          <div style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 24, color: '#4ade80', margin: '4px 0' }}>
+            {paidCount}/{players.length}
+          </div>
+          <div style={{ fontSize: 10, color: '#555', letterSpacing: 1 }}>PAGAMENTOS</div>
+        </div>
+
+        {/* Card Times */}
+        <div className="card" style={{ textAlign: 'center', padding: 14 }}>
+          <div style={{ fontSize: 22 }}>🎲</div>
+          <div style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 24, color: '#4ade80', margin: '4px 0' }}>
+            {drawn ? 'SORTEADO' : 'PENDENTE'}
+          </div>
+          <div style={{ fontSize: 10, color: '#555', letterSpacing: 1 }}>TIMES</div>
+        </div>
       </div>
 
       {drawn && (

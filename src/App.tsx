@@ -1941,10 +1941,21 @@ export default function App() {
       if (!drawn || fromTeam === toTeam) return;
       const player = drawn[fromTeam]?.find(p => p.id === playerId);
       if (!player) return;
-      const newDrawn = { ...drawn };
-      newDrawn[fromTeam] = drawn[fromTeam].filter(p => p.id !== playerId);
-      newDrawn[toTeam] = [...drawn[toTeam], player];
-      updateDrawn(newDrawn);
+
+      // Remove pendentes e monta times só com jogadores reais
+      const newDrawn = {};
+      Object.keys(TEAMS_CFG).forEach(tk => {
+        newDrawn[tk] = (drawn[tk] || []).filter(p => !p.isPending && p.id !== playerId);
+      });
+      // Move o jogador pro novo time
+      if (toTeam) newDrawn[toTeam] = [...newDrawn[toTeam], player];
+
+      // Pega todos os jogadores reais pra calcular média geral
+      const allReal = Object.values(newDrawn).flat();
+
+      // Reaplica pendentes equilibrados
+      const balanced = fillPendingSlots(newDrawn, allReal);
+      updateDrawn(balanced);
       setMovePlayer(null);
     };
 

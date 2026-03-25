@@ -1203,7 +1203,6 @@ export default function App() {
   const [ausenteInput, setAusenteInput] = useState({ id: '', motivo: '' });
   const [showAusAdd, setShowAusAdd] = useState(false);
   const [confirmDesfazer, setConfirmDesfazer] = useState(false);
-  const [lastResetAt, setLastResetAt] = useState('');
   const [caixaSubTab, setCaixaSubTab] = useState('pagamentos');
   const [appliedMatch, setAppliedMatch] = useState(null);
 
@@ -1237,8 +1236,6 @@ export default function App() {
           if (co) setColetes(co);
           const li = load('fm_lista');
           if (li) setLista(li);
-          const lr = load('fm_lastReset');
-          if (lr) setLastResetAt(lr);
           const cm = load('fm_appliedMatch');
           if (cm) setAppliedMatch(cm);
           const cs = load('fm_caixaSubTab');

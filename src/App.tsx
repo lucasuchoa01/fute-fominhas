@@ -1975,6 +1975,23 @@ export default function App() {
       updateDrawn(drawTeams(allRealPlayers));
     };
 
+    const [movePlayer, setMovePlayer] = useState(null);
+
+    const movePlayerBetweenTeams = (playerId, fromTeam, toTeam) => {
+      if (!drawn || fromTeam === toTeam) return;
+      const player = drawn[fromTeam]?.find(p => p.id === playerId);
+      if (!player) return;
+      const newDrawn = {};
+      Object.keys(TEAMS_CFG).forEach(tk => {
+        newDrawn[tk] = (drawn[tk] || []).filter(p => !p.isPending && p.id !== playerId);
+      });
+      if (toTeam) newDrawn[toTeam] = [...newDrawn[toTeam], player];
+      const allReal = Object.values(newDrawn).flat();
+      const balanced = fillPendingSlots(newDrawn, allReal);
+      updateDrawn(balanced);
+      setMovePlayer(null);
+    };
+
     return (
       <div>
         <div className="stitle">SORTEIO</div>
@@ -2247,27 +2264,39 @@ export default function App() {
                             {p.isPending ? 'sug.' : 'méd'} {avg}
                           </span>
                           {isAdmin && !p.isPending && (
-                            <button
-                              onClick={() => removeFromTeam(k, p.id)}
-                              title="Remover do time"
-                              style={{
-                                background: '#1a0a0a',
-                                border: '1px solid #2a1212',
-                                color: '#555',
-                                borderRadius: 6,
-                                width: 22,
-                                height: 22,
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                cursor: 'pointer',
-                                fontSize: 12,
-                                padding: 0,
-                                lineHeight: 1,
-                              }}
-                            >
-                              ✕
-                            </button>
+                            <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+                              {movePlayer?.playerId === p.id ? (
+                                <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                                  {Object.entries(TEAMS_CFG).filter(([tk]) => tk !== k).map(([tk, tc]) => (
+                                    <button
+                                      key={tk}
+                                      onClick={() => movePlayerBetweenTeams(p.id, k, tk)}
+                                      style={{ background: tc.color + '22', border: `1px solid ${tc.color}66`, color: tc.color, borderRadius: 6, padding: '2px 7px', fontSize: 11, cursor: 'pointer', fontWeight: 700 }}
+                                    >
+                                      {tc.emoji}
+                                    </button>
+                                  ))}
+                                  <button onClick={() => setMovePlayer(null)} style={{ background: 'none', border: 'none', color: '#555', cursor: 'pointer', fontSize: 13, padding: '2px 4px' }}>✕</button>
+                                </div>
+                              ) : (
+                                <>
+                                  <button
+                                    onClick={() => setMovePlayer({ playerId: p.id, fromTeam: k })}
+                                    title="Mover para outro time"
+                                    style={{ background: '#1a1a2e', border: '1px solid #2a2a5a', color: '#818cf8', borderRadius: 6, width: 22, height: 22, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: 12, padding: 0 }}
+                                  >
+                                    ⇄
+                                  </button>
+                                  <button
+                                    onClick={() => removeFromTeam(k, p.id)}
+                                    title="Remover do time"
+                                    style={{ background: '#1a0a0a', border: '1px solid #2a1212', color: '#555', borderRadius: 6, width: 22, height: 22, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: 12, padding: 0, lineHeight: 1 }}
+                                  >
+                                    ✕
+                                  </button>
+                                </>
+                              )}
+                            </div>
                           )}
                         </div>
                       </div>

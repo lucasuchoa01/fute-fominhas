@@ -1545,43 +1545,47 @@ export default function App() {
           marginBottom: 16,
         }}
       >
-        {[
-          {
-            i: '🏆',
-            v: currentChampionTeam ? TEAMS_CFG[currentChampionTeam].label : '—',
-            l: 'CAMPEÃO DA SEMANA',
-          },
-          {
-            i: '⚽',
-            v: currentTopScorer
-              ? `${currentTopScorer.name} (${currentTopScorer.goals})`
-              : '—',
-            l: 'ARTILHEIRO DA SEMANA',
-          },
-          { i: '💰', v: `${paidCount}/${players.length}`, l: 'PAGAMENTOS' },
-          { i: '🎲', v: drawn ? 'SORTEADO' : 'PENDENTE', l: 'TIMES' },
-        ].map(({ i, v, l }, idx) => (
-          <div
-            key={idx}
-            className="card"
-            style={{ textAlign: 'center', padding: 14 }}
-          >
-            <div style={{ fontSize: 22 }}>{i}</div>
-            <div
-              style={{
-                fontFamily: "'Bebas Neue',sans-serif",
-                fontSize: 24,
-                color: '#4ade80',
-                margin: '4px 0',
-              }}
-            >
-              {v}
-            </div>
-            <div style={{ fontSize: 10, color: '#555', letterSpacing: 1 }}>
-              {l}
-            </div>
+        {/* Card Campeão */}
+        <div className="card" style={{ textAlign: 'center', padding: 14 }}>
+          <div style={{ fontSize: 22 }}>🏆</div>
+          <div style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 24, color: currentChampionTeam ? TEAMS_CFG[currentChampionTeam].color : '#4ade80', margin: '4px 0' }}>
+            {currentChampionTeam ? TEAMS_CFG[currentChampionTeam].label : '—'}
           </div>
-        ))}
+          <div style={{ fontSize: 10, color: '#555', letterSpacing: 1 }}>CAMPEÃO DA SEMANA</div>
+          {currentChampionTeam && drawn && (
+            <div style={{ marginTop: 8, display: 'flex', flexWrap: 'wrap', gap: 3, justifyContent: 'center' }}>
+              {(drawn[currentChampionTeam] || []).filter(p => !p.isPending).map(p => (
+                <span key={p.id} style={{ fontSize: 9, fontWeight: 700, color: TEAMS_CFG[currentChampionTeam].color, background: TEAMS_CFG[currentChampionTeam].color + '1a', border: `1px solid ${TEAMS_CFG[currentChampionTeam].color}33`, borderRadius: 4, padding: '1px 5px' }}>
+                  {p.name}
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Card Artilheiro */}
+        <div className="card" style={{ textAlign: 'center', padding: 14 }}>
+          <div style={{ fontSize: 22 }}>⚽</div>
+          <div style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: currentTopScorer && currentTopScorer.name.length > 10 ? 16 : 24, color: '#4ade80', margin: '4px 0', lineHeight: 1.1 }}>
+            {currentTopScorer ? currentTopScorer.name : '—'}
+          </div>
+          {currentTopScorer && <div style={{ fontSize: 11, color: '#4ade80', fontWeight: 700, marginBottom: 2 }}>{currentTopScorer.goals} gols</div>}
+          <div style={{ fontSize: 10, color: '#555', letterSpacing: 1 }}>ARTILHEIRO DA SEMANA</div>
+        </div>
+
+        {/* Card Pagamentos */}
+        <div className="card" style={{ textAlign: 'center', padding: 14 }}>
+          <div style={{ fontSize: 22 }}>💰</div>
+          <div style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 24, color: '#4ade80', margin: '4px 0' }}>{paidCount}/{players.length}</div>
+          <div style={{ fontSize: 10, color: '#555', letterSpacing: 1 }}>PAGAMENTOS</div>
+        </div>
+
+        {/* Card Times */}
+        <div className="card" style={{ textAlign: 'center', padding: 14 }}>
+          <div style={{ fontSize: 22 }}>🎲</div>
+          <div style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 24, color: '#4ade80', margin: '4px 0' }}>{drawn ? 'SORTEADO' : 'PENDENTE'}</div>
+          <div style={{ fontSize: 10, color: '#555', letterSpacing: 1 }}>TIMES</div>
+        </div>
       </div>
 
       {drawn && (
@@ -2847,24 +2851,28 @@ export default function App() {
         )}
 
         {/* Histórico */}
-        {matchHistory.length > 0 && (
-          <div style={{ marginBottom: 12 }}>
-            <button
-              onClick={() => setShowHistory(h => !h)}
-              style={{ width: '100%', background: '#141414', border: '1px solid #2a2a2a', borderRadius: 10, color: '#888', padding: '10px', fontFamily: "'Barlow',sans-serif", fontWeight: 700, fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
-            >
-              <span>📋 HISTÓRICO DE PARTIDAS ({matchHistory.length})</span>
-              <span>{showHistory ? '▲' : '▼'}</span>
-            </button>
-            {showHistory && (
-              <div style={{ marginTop: 8 }}>
-                {matchHistory.map((h) => (
+        <div style={{ marginBottom: 12 }}>
+          <button
+            onClick={() => setShowHistory(h => !h)}
+            style={{ width: '100%', background: '#141414', border: '1px solid #2a2a2a', borderRadius: 10, color: '#888', padding: '10px', fontFamily: "'Barlow',sans-serif", fontWeight: 700, fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
+          >
+            <span>📋 HISTÓRICO DE PARTIDAS {matchHistory.length > 0 ? `(${matchHistory.length})` : ''}</span>
+            <span>{showHistory ? '▲' : '▼'}</span>
+          </button>
+          {showHistory && (
+            <div style={{ marginTop: 8 }}>
+              {matchHistory.length === 0 ? (
+                <div style={{ background: '#141414', border: '1px solid #222', borderRadius: 10, padding: '16px', textAlign: 'center', fontSize: 13, color: '#444', fontStyle: 'italic' }}>
+                  Nenhuma partida salva ainda.{'\n'}Salve uma partida para começar o histórico.
+                </div>
+              ) : (
+                matchHistory.map((h) => (
                   <HistoryEntry key={h.id} h={h} />
-                ))}
-              </div>
-            )}
-          </div>
-        )}
+                ))
+              )}
+            </div>
+          )}
+        </div>
 
         {/* Artilharia */}
         <div

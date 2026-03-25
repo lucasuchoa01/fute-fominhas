@@ -1,18 +1,4 @@
 import { useState, useEffect, useRef } from 'react';
-import { initializeApp } from 'firebase/app';
-import { getFirestore, doc, getDoc, setDoc } from 'firebase/firestore';
-
-const firebaseConfig = {
-  apiKey: "AIzaSyBlXvCW5rrdTbgTSxMt5lIgs80eH4RAWvE",
-  authDomain: "fominhas-league.firebaseapp.com",
-  projectId: "fominhas-league",
-  storageBucket: "fominhas-league.firebasestorage.app",
-  messagingSenderId: "259341849200",
-  appId: "1:259341849200:web:0ab82248835a6daa57dab5"
-};
-
-const firebaseApp = initializeApp(firebaseConfig);
-const db = getFirestore(firebaseApp);
 
 // ============ CONSTANTS ============
 
@@ -532,12 +518,12 @@ function calcStandings(rounds) {
 const CSS = `
 @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Barlow:wght@400;600;700;900&display=swap');
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:'Barlow',sans-serif;background:#080808;color:#f0f0f0;overflow:hidden;height:100vh;height:100dvh}
-.app{display:flex;flex-direction:column;height:100vh;height:100dvh;max-width:480px;margin:0 auto;background:#0a0a0a;position:relative}
+body{font-family:'Barlow',sans-serif;background:#080808;color:#f0f0f0;overflow:hidden;height:100vh}
+.app{display:flex;flex-direction:column;height:100vh;max-width:480px;margin:0 auto;background:#0a0a0a;position:relative}
 .hdr{background:linear-gradient(135deg,#0f0f0f,#1a1a1a);border-bottom:1px solid #222;padding:12px 16px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
 .hdr-title{font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:2px;background:linear-gradient(90deg,#4ade80,#22c55e);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
 .hdr-sub{font-size:10px;color:#444;letter-spacing:1px;text-transform:uppercase}
-.content{flex:1;overflow-y:auto;padding:16px;padding-bottom:120px}
+.content{flex:1;overflow-y:auto;padding:16px;padding-bottom:80px}
 .bnav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:480px;background:#0f0f0f;border-top:1px solid #1f1f1f;display:flex;z-index:100}
 .ntab{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:8px 1px 6px;background:none;border:none;cursor:pointer;color:#444;transition:color .2s;font-family:'Barlow',sans-serif}
 .ntab.on{color:#4ade80}
@@ -1206,19 +1192,22 @@ export default function App() {
   const [lastResetAt, setLastResetAt] = useState('');
   const [caixaSubTab, setCaixaSubTab] = useState('pagamentos');
   const [appliedMatch, setAppliedMatch] = useState(null);
-  const [matchHistory, setMatchHistory] = useState([]);
-  const [showHistory, setShowHistory] = useState(false);
 
   // Load storage
   useEffect(() => {
     (async () => {
       try {
-        const ref = doc(db, 'app', 'state');
-        const snap = await getDoc(ref);
-        if (!snap.exists()) return;
-        const data = snap.data();
-        const load = (k) => {
-          try { const v = data[k]; return v ? JSON.parse(v) : null; } catch (e) { return null; }
+        const load = async (k) => {
+          try {
+            const r = await window.storage.get(k);
+            if (r && typeof r.value === 'string') return JSON.parse(r.value);
+          } catch (e) {}
+          try {
+            const raw = window.localStorage.getItem(k);
+            return raw ? JSON.parse(raw) : null;
+          } catch (e) {
+            return null;
+          }
         };
         const pl = await load('fm_players');
         if (pl) setPlayers(pl);
@@ -1242,18 +1231,18 @@ export default function App() {
         if (cm) setAppliedMatch(cm);
         const cs = await load('fm_caixaSubTab');
         if (cs) setCaixaSubTab(cs);
-        const mh = await load('fm_matchHistory');
-        if (mh) setMatchHistory(mh);
-      } catch (e) { console.error('Erro Firestore:', e); }
+      } catch (e) {}
     })();
   }, []);
 
   const save = async (k, v) => {
     const raw = JSON.stringify(v);
     try {
-      const ref = doc(db, 'app', 'state');
-      await setDoc(ref, { [k]: raw }, { merge: true });
-    } catch (e) { console.error('Erro ao salvar:', e); }
+      await window.storage.set(k, raw);
+    } catch (e) {}
+    try {
+      window.localStorage.setItem(k, raw);
+    } catch (e) {}
   };
 
   // Helpers
@@ -1456,47 +1445,7 @@ export default function App() {
     updatePlayers(updated);
     setAppliedMatch(snapshot);
     save('fm_appliedMatch', snapshot);
-
-    // Save to history
-    const topScorer = (() => {
-      const entries = Object.entries(normalizedGoals);
-      if (!entries.length) return null;
-      const [topId, topGoals] = entries.sort((a,b) => b[1]-a[1])[0];
-      const p = players.find(pl => pl.id === Number(topId));
-      return p ? { name: p.name, goals: topGoals } : null;
-    })();
-    const champPlayers = champIds.map(id => players.find(p => p.id === id)?.name).filter(Boolean);
-    const entry = {
-      id: Date.now(),
-      date: lista.date,
-      champTeam,
-      champPlayers,
-      topScorer,
-      finalScore: { tA: finale.tA, sA: finale.sA, tB: finale.tB, sB: finale.sB },
-      rounds: rounds.map(r => ({ id: r.id, pairs: r.pairs.map(p => ({ ...p })) })),
-    };
-    const newHistory = [entry, ...matchHistory].slice(0, 52);
-    setMatchHistory(newHistory);
-    save('fm_matchHistory', newHistory);
-
     alert('Partida salva e tabela atualizada.');
-  };
-
-  const resetSemana = async () => {
-    if (!confirm('Zerar a semana?\n\nLista, sorteio e placares serao apagados.\nA Tabela Geral NAO sera afetada.')) return;
-    const freshLista = { date: new Date().toISOString().split('T')[0], slots: [], ausentes: [] };
-    setDrawn(null);
-    setRounds(INIT_ROUNDS);
-    setFinale(INIT_FINAL);
-    setScorers({});
-    setLista(freshLista);
-    setAppliedMatch(null);
-    await save('fm_drawn', null);
-    await save('fm_rounds', INIT_ROUNDS);
-    await save('fm_finale', INIT_FINAL);
-    await save('fm_scorers', {});
-    await save('fm_lista', freshLista);
-    await save('fm_appliedMatch', null);
   };
 
   const preserveContentScroll = (updater) => {
@@ -1545,47 +1494,43 @@ export default function App() {
           marginBottom: 16,
         }}
       >
-        {/* Card Campeão */}
-        <div className="card" style={{ textAlign: 'center', padding: 14 }}>
-          <div style={{ fontSize: 22 }}>🏆</div>
-          <div style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 24, color: currentChampionTeam ? TEAMS_CFG[currentChampionTeam].color : '#4ade80', margin: '4px 0' }}>
-            {currentChampionTeam ? TEAMS_CFG[currentChampionTeam].label : '—'}
-          </div>
-          <div style={{ fontSize: 10, color: '#555', letterSpacing: 1 }}>CAMPEÃO DA SEMANA</div>
-          {currentChampionTeam && drawn && (
-            <div style={{ marginTop: 8, display: 'flex', flexWrap: 'wrap', gap: 3, justifyContent: 'center' }}>
-              {(drawn[currentChampionTeam] || []).filter(p => !p.isPending).map(p => (
-                <span key={p.id} style={{ fontSize: 9, fontWeight: 700, color: TEAMS_CFG[currentChampionTeam].color, background: TEAMS_CFG[currentChampionTeam].color + '1a', border: `1px solid ${TEAMS_CFG[currentChampionTeam].color}33`, borderRadius: 4, padding: '1px 5px' }}>
-                  {p.name}
-                </span>
-              ))}
+        {[
+          {
+            i: '🏆',
+            v: currentChampionTeam ? TEAMS_CFG[currentChampionTeam].label : '—',
+            l: 'CAMPEÃO DA SEMANA',
+          },
+          {
+            i: '⚽',
+            v: currentTopScorer
+              ? `${currentTopScorer.name} (${currentTopScorer.goals})`
+              : '—',
+            l: 'PIKINHA DA NOITE',
+          },
+          { i: '💰', v: `${paidCount}/${players.length}`, l: 'PAGAMENTOS' },
+          { i: '🎲', v: drawn ? 'SORTEADO' : 'PENDENTE', l: 'TIMES' },
+        ].map(({ i, v, l }, idx) => (
+          <div
+            key={idx}
+            className="card"
+            style={{ textAlign: 'center', padding: 14 }}
+          >
+            <div style={{ fontSize: 22 }}>{i}</div>
+            <div
+              style={{
+                fontFamily: "'Bebas Neue',sans-serif",
+                fontSize: 24,
+                color: '#4ade80',
+                margin: '4px 0',
+              }}
+            >
+              {v}
             </div>
-          )}
-        </div>
-
-        {/* Card Artilheiro */}
-        <div className="card" style={{ textAlign: 'center', padding: 14 }}>
-          <div style={{ fontSize: 22 }}>⚽</div>
-          <div style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: currentTopScorer && currentTopScorer.name.length > 10 ? 16 : 24, color: '#4ade80', margin: '4px 0', lineHeight: 1.1 }}>
-            {currentTopScorer ? currentTopScorer.name : '—'}
+            <div style={{ fontSize: 10, color: '#555', letterSpacing: 1 }}>
+              {l}
+            </div>
           </div>
-          {currentTopScorer && <div style={{ fontSize: 11, color: '#4ade80', fontWeight: 700, marginBottom: 2 }}>{currentTopScorer.goals} gols</div>}
-          <div style={{ fontSize: 10, color: '#555', letterSpacing: 1 }}>ARTILHEIRO DA SEMANA</div>
-        </div>
-
-        {/* Card Pagamentos */}
-        <div className="card" style={{ textAlign: 'center', padding: 14 }}>
-          <div style={{ fontSize: 22 }}>💰</div>
-          <div style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 24, color: '#4ade80', margin: '4px 0' }}>{paidCount}/{players.length}</div>
-          <div style={{ fontSize: 10, color: '#555', letterSpacing: 1 }}>PAGAMENTOS</div>
-        </div>
-
-        {/* Card Times */}
-        <div className="card" style={{ textAlign: 'center', padding: 14 }}>
-          <div style={{ fontSize: 22 }}>🎲</div>
-          <div style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 24, color: '#4ade80', margin: '4px 0' }}>{drawn ? 'SORTEADO' : 'PENDENTE'}</div>
-          <div style={{ fontSize: 10, color: '#555', letterSpacing: 1 }}>TIMES</div>
-        </div>
+        ))}
       </div>
 
       {drawn && (
@@ -1975,23 +1920,6 @@ export default function App() {
       updateDrawn(drawTeams(allRealPlayers));
     };
 
-    const [movePlayer, setMovePlayer] = useState(null);
-
-    const movePlayerBetweenTeams = (playerId, fromTeam, toTeam) => {
-      if (!drawn || fromTeam === toTeam) return;
-      const player = drawn[fromTeam]?.find(p => p.id === playerId);
-      if (!player) return;
-      const newDrawn = {};
-      Object.keys(TEAMS_CFG).forEach(tk => {
-        newDrawn[tk] = (drawn[tk] || []).filter(p => !p.isPending && p.id !== playerId);
-      });
-      if (toTeam) newDrawn[toTeam] = [...newDrawn[toTeam], player];
-      const allReal = Object.values(newDrawn).flat();
-      const balanced = fillPendingSlots(newDrawn, allReal);
-      updateDrawn(balanced);
-      setMovePlayer(null);
-    };
-
     return (
       <div>
         <div className="stitle">SORTEIO</div>
@@ -2067,7 +1995,6 @@ export default function App() {
           </div>
 
           {/* Botões principais */}
-          {isAdmin && (
           <div style={{ display: 'flex', gap: 8 }}>
             <button className="btn" style={{ flex: 1 }} onClick={doShuffle}>
               {drawn ? '🔀 REFAZER' : '🎲 SORTEAR TIMES'}
@@ -2093,7 +2020,6 @@ export default function App() {
               </button>
             )}
           </div>
-          )}
 
           {/* Confirmação desfazer */}
           {confirmDesfazer && (
@@ -2264,39 +2190,27 @@ export default function App() {
                             {p.isPending ? 'sug.' : 'méd'} {avg}
                           </span>
                           {isAdmin && !p.isPending && (
-                            <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
-                              {movePlayer?.playerId === p.id ? (
-                                <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-                                  {Object.entries(TEAMS_CFG).filter(([tk]) => tk !== k).map(([tk, tc]) => (
-                                    <button
-                                      key={tk}
-                                      onClick={() => movePlayerBetweenTeams(p.id, k, tk)}
-                                      style={{ background: tc.color + '22', border: `1px solid ${tc.color}66`, color: tc.color, borderRadius: 6, padding: '2px 7px', fontSize: 11, cursor: 'pointer', fontWeight: 700 }}
-                                    >
-                                      {tc.emoji}
-                                    </button>
-                                  ))}
-                                  <button onClick={() => setMovePlayer(null)} style={{ background: 'none', border: 'none', color: '#555', cursor: 'pointer', fontSize: 13, padding: '2px 4px' }}>✕</button>
-                                </div>
-                              ) : (
-                                <>
-                                  <button
-                                    onClick={() => setMovePlayer({ playerId: p.id, fromTeam: k })}
-                                    title="Mover para outro time"
-                                    style={{ background: '#1a1a2e', border: '1px solid #2a2a5a', color: '#818cf8', borderRadius: 6, width: 22, height: 22, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: 12, padding: 0 }}
-                                  >
-                                    ⇄
-                                  </button>
-                                  <button
-                                    onClick={() => removeFromTeam(k, p.id)}
-                                    title="Remover do time"
-                                    style={{ background: '#1a0a0a', border: '1px solid #2a1212', color: '#555', borderRadius: 6, width: 22, height: 22, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: 12, padding: 0, lineHeight: 1 }}
-                                  >
-                                    ✕
-                                  </button>
-                                </>
-                              )}
-                            </div>
+                            <button
+                              onClick={() => removeFromTeam(k, p.id)}
+                              title="Remover do time"
+                              style={{
+                                background: '#1a0a0a',
+                                border: '1px solid #2a1212',
+                                color: '#555',
+                                borderRadius: 6,
+                                width: 22,
+                                height: 22,
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                cursor: 'pointer',
+                                fontSize: 12,
+                                padding: 0,
+                                lineHeight: 1,
+                              }}
+                            >
+                              ✕
+                            </button>
                           )}
                         </div>
                       </div>
@@ -2330,65 +2244,6 @@ export default function App() {
                 </div>
               )
           )}
-      </div>
-    );
-  };
-
-  // ── HISTORY ENTRY ────────────────────────────────────────────────────────────
-  const HistoryEntry = ({ h }) => {
-    const [open, setOpen] = useState(false);
-    const fmtDate = (iso) => {
-      if (!iso) return '';
-      const [y, m, d] = iso.split('-');
-      return `${d}/${m}/${y.slice(2)}`;
-    };
-    const cfg = h.champTeam ? TEAMS_CFG[h.champTeam] : null;
-    return (
-      <div style={{ background: '#141414', border: '1px solid #222', borderRadius: 10, marginBottom: 8, overflow: 'hidden' }}>
-        <button
-          onClick={() => setOpen(o => !o)}
-          style={{ width: '100%', background: 'none', border: 'none', padding: '12px 14px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}
-        >
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 4 }}>
-            <span style={{ fontSize: 11, color: '#555', fontWeight: 700 }}>📅 {fmtDate(h.date)}</span>
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-              {cfg && <span style={{ fontSize: 12, fontWeight: 700, color: cfg.color }}>{cfg.emoji} {cfg.label}</span>}
-              {h.finalScore && <span style={{ fontSize: 11, color: '#777' }}>{TEAMS_CFG[h.finalScore.tA]?.emoji} {h.finalScore.sA} × {h.finalScore.sB} {TEAMS_CFG[h.finalScore.tB]?.emoji}</span>}
-              {h.topScorer && <span style={{ fontSize: 11, color: '#4ade80' }}>⚽ {h.topScorer.name} ({h.topScorer.goals})</span>}
-            </div>
-          </div>
-          <span style={{ color: '#444', fontSize: 12 }}>{open ? '▲' : '▼'}</span>
-        </button>
-        {open && (
-          <div style={{ borderTop: '1px solid #222', padding: '10px 14px' }}>
-            {h.champPlayers?.length > 0 && (
-              <div style={{ marginBottom: 8 }}>
-                <div style={{ fontSize: 10, color: '#555', letterSpacing: 1, marginBottom: 4 }}>🏆 CAMPEÕES</div>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
-                  {h.champPlayers.map((n, i) => (
-                    <span key={i} style={{ fontSize: 11, color: cfg?.color || '#4ade80', background: (cfg?.color || '#4ade80') + '1a', border: `1px solid ${(cfg?.color || '#4ade80')}33`, borderRadius: 4, padding: '1px 6px' }}>{n}</span>
-                  ))}
-                </div>
-              </div>
-            )}
-            {h.rounds?.map(r => (
-              <div key={r.id} style={{ marginBottom: 6 }}>
-                <div style={{ fontSize: 9, color: '#444', letterSpacing: 1, marginBottom: 3 }}>RODADA {r.id}</div>
-                {r.pairs.map((p, pi) => {
-                  const cA = TEAMS_CFG[p.tA], cB = TEAMS_CFG[p.tB];
-                  if (!cA || !cB) return null;
-                  return (
-                    <div key={pi} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, marginBottom: 2 }}>
-                      <span style={{ fontSize: 11, color: cA.color, fontWeight: 700 }}>{cA.emoji} {cA.label}</span>
-                      <span style={{ fontSize: 13, fontFamily: "'Bebas Neue',sans-serif", color: '#ccc' }}>{p.sA !== '' ? p.sA : '-'} × {p.sB !== '' ? p.sB : '-'}</span>
-                      <span style={{ fontSize: 11, color: cB.color, fontWeight: 700 }}>{cB.label} {cB.emoji}</span>
-                    </div>
-                  );
-                })}
-              </div>
-            ))}
-          </div>
-        )}
       </div>
     );
   };
@@ -2855,54 +2710,6 @@ export default function App() {
           </div>
         </div>
 
-        {/* Salvar + Nova Semana */}
-        {isAdmin && (
-          <div style={{ margin: '16px 0 4px' }}>
-            <button
-              className="btn"
-              style={{ background: appliedMatch ? 'linear-gradient(135deg,#064e3b,#059669)' : 'linear-gradient(135deg,#7c2d12,#ea580c)', marginBottom: 6 }}
-              onClick={saveMatchResults}
-            >
-              {appliedMatch ? '✅ PARTIDA SALVA — ATUALIZAR' : '💾 SALVAR PARTIDA E ATUALIZAR TABELA'}
-            </button>
-            {appliedMatch && (
-              <div style={{ fontSize: 11, color: '#059669', textAlign: 'center', marginBottom: 6 }}>
-                Salvo em {new Date(appliedMatch.savedAt).toLocaleString('pt-BR')}
-              </div>
-            )}
-            <button
-              onClick={resetSemana}
-              style={{ width: '100%', background: 'none', border: '1px solid #3a1a1a', borderRadius: 10, color: '#ef4444', padding: '10px', fontFamily: "'Barlow',sans-serif", fontWeight: 700, fontSize: 13, cursor: 'pointer', letterSpacing: 0.5 }}
-            >
-              🔄 NOVA SEMANA (zerar lista, sorteio e placares)
-            </button>
-          </div>
-        )}
-
-        {/* Histórico */}
-        <div style={{ marginBottom: 12 }}>
-          <button
-            onClick={() => setShowHistory(h => !h)}
-            style={{ width: '100%', background: '#141414', border: '1px solid #2a2a2a', borderRadius: 10, color: '#888', padding: '10px', fontFamily: "'Barlow',sans-serif", fontWeight: 700, fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
-          >
-            <span>📋 HISTÓRICO DE PARTIDAS {matchHistory.length > 0 ? `(${matchHistory.length})` : ''}</span>
-            <span>{showHistory ? '▲' : '▼'}</span>
-          </button>
-          {showHistory && (
-            <div style={{ marginTop: 8 }}>
-              {matchHistory.length === 0 ? (
-                <div style={{ background: '#141414', border: '1px solid #222', borderRadius: 10, padding: '16px', textAlign: 'center', fontSize: 13, color: '#444', fontStyle: 'italic' }}>
-                  Nenhuma partida salva ainda.{'\n'}Salve uma partida para começar o histórico.
-                </div>
-              ) : (
-                matchHistory.map((h) => (
-                  <HistoryEntry key={h.id} h={h} />
-                ))
-              )}
-            </div>
-          )}
-        </div>
-
         {/* Artilharia */}
         <div
           style={{
@@ -2915,7 +2722,7 @@ export default function App() {
             borderRadius: 6,
           }}
         >
-          ⚽ ARTILHARIA DA SEMANA
+          ⚽ PIKINHA DA NOITE
         </div>
         {drawn ? (
           Object.entries(TEAMS_CFG).map(([teamKey, cfg]) => {
@@ -3195,127 +3002,9 @@ export default function App() {
       .sort(
         (a, b) => b.champ - a.champ || b.vice - a.vice || b.goals - a.goals
       );
-
-    const downloadImage = () => {
-      const scale = 2;
-      const W = 440, rowH = 44, headerH = 52, titleH = 56, footerH = 32;
-      const totalH = titleH + headerH + rowH * sorted.length + footerH;
-      const canvas = document.createElement('canvas');
-      canvas.width = W * scale;
-      canvas.height = totalH * scale;
-      const ctx = canvas.getContext('2d');
-      ctx.scale(scale, scale);
-
-      // Background
-      ctx.fillStyle = '#0a0a0a';
-      ctx.fillRect(0, 0, W, totalH);
-
-      // Title bar
-      ctx.fillStyle = '#111';
-      ctx.fillRect(0, 0, W, titleH);
-      ctx.font = 'bold 11px Arial';
-      ctx.fillStyle = '#4ade80';
-      ctx.textAlign = 'center';
-      ctx.fillText('FOMINHAS LEAGUE', W / 2, 22);
-      ctx.font = 'bold 18px Arial';
-      ctx.fillStyle = '#4ade80';
-      ctx.fillText('TABELA GERAL', W / 2, 44);
-
-      // Header row
-      const cols = [
-        { label: '#', x: 28, w: 36, align: 'center' },
-        { label: 'NOME', x: 80, w: 160, align: 'left' },
-        { label: '🏆', x: 240, w: 50, align: 'center' },
-        { label: '🥈', x: 290, w: 50, align: 'center' },
-        { label: '⚽', x: 340, w: 50, align: 'center' },
-        { label: '✅', x: 390, w: 50, align: 'center' },
-      ];
-      ctx.fillStyle = '#1a1a1a';
-      ctx.fillRect(0, titleH, W, headerH);
-      ctx.font = 'bold 10px Arial';
-      ctx.fillStyle = '#555';
-      cols.forEach(col => {
-        ctx.textAlign = col.align;
-        ctx.fillText(col.label, col.align === 'center' ? col.x + col.w / 2 - 8 : col.x, titleH + headerH / 2 + 4);
-      });
-
-      // Rows
-      const rankColors = { A: '#f59e0b', B: '#f97316', C: '#3b82f6', D: '#6b7280', E: '#374151' };
-      const posColors = ['#f59e0b', '#94a3b8', '#cd7c4b'];
-
-      sorted.forEach((p, i) => {
-        const y = titleH + headerH + rowH * i;
-        ctx.fillStyle = i % 2 === 0 ? '#111' : '#141414';
-        ctx.fillRect(0, y, W, rowH);
-
-        // separator
-        ctx.fillStyle = '#1f1f1f';
-        ctx.fillRect(0, y + rowH - 1, W, 1);
-
-        const cy = y + rowH / 2 + 5;
-
-        // Position
-        ctx.font = 'bold 16px Arial';
-        ctx.textAlign = 'center';
-        ctx.fillStyle = posColors[i] || '#444';
-        ctx.fillText(String(i + 1), 46, cy);
-
-        // Ranking badge
-        const rankColor = rankColors[p.ranking] || '#555';
-        ctx.fillStyle = rankColor + '33';
-        ctx.beginPath();
-        ctx.roundRect(64, y + 10, 22, 18, 4);
-        ctx.fill();
-        ctx.font = 'bold 10px Arial';
-        ctx.fillStyle = rankColor;
-        ctx.textAlign = 'center';
-        ctx.fillText(p.ranking, 75, y + 23);
-
-        // Name
-        ctx.font = '600 13px Arial';
-        ctx.fillStyle = '#eee';
-        ctx.textAlign = 'left';
-        ctx.fillText(p.name, 92, cy);
-
-        // Stats
-        const stats = [p.champ, p.vice, p.goals, p.pres];
-        const statColors = ['#f59e0b', '#94a3b8', '#4ade80', '#555'];
-        [240, 290, 340, 390].forEach((x, si) => {
-          ctx.font = 'bold 15px Arial';
-          ctx.fillStyle = statColors[si];
-          ctx.textAlign = 'center';
-          ctx.fillText(String(stats[si]), x + 17, cy);
-        });
-      });
-
-      // Footer
-      const fy = titleH + headerH + rowH * sorted.length;
-      ctx.fillStyle = '#111';
-      ctx.fillRect(0, fy, W, footerH);
-      ctx.font = '10px Arial';
-      ctx.fillStyle = '#333';
-      ctx.textAlign = 'center';
-      const today = new Date().toLocaleDateString('pt-BR');
-      ctx.fillText(`Gerado em ${today} · Depois das Dez FS`, W / 2, fy + 20);
-
-      // Download
-      const link = document.createElement('a');
-      link.download = `tabela-fominhas-${new Date().toISOString().slice(0,10)}.png`;
-      link.href = canvas.toDataURL('image/png');
-      link.click();
-    };
-
     return (
       <div>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-          <div className="stitle" style={{ margin: 0 }}>TABELA GERAL</div>
-          <button
-            onClick={downloadImage}
-            style={{ background: '#141414', border: '1px solid #2a2a2a', borderRadius: 8, padding: '7px 14px', color: '#4ade80', fontSize: 12, cursor: 'pointer', fontFamily: "'Barlow',sans-serif", fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6 }}
-          >
-            📥 BAIXAR
-          </button>
-        </div>
+        <div className="stitle">TABELA GERAL</div>
         <div
           style={{
             borderRadius: 10,

@@ -1359,18 +1359,21 @@ export default function App() {
   const liderTabela = (() => {
     const mensalistas = players.filter((p) => (p.tipo || 'mensalista') === 'mensalista');
     if (!mensalistas.length) return null;
-    const sorted = [...mensalistas].sort((a, b) => b.champ - a.champ || b.vice - a.vice || b.goals - a.goals);
+    const sorted = [...mensalistas].sort((a, b) => b.champ - a.champ || b.vice - a.vice || b.goals - a.goals || b.pres - a.pres);
     return sorted[0];
   })();
 
   const bolaMurcha = (() => {
-    const totalJogos = Math.max(...players.map(p => p.pres), 1);
+    const maxPres = Math.max(...players.filter(p => (p.tipo || 'mensalista') === 'mensalista').map(p => p.pres), 1);
     const elegiveis = players.filter((p) =>
       (p.tipo || 'mensalista') === 'mensalista' &&
-      p.pres >= totalJogos * 0.5
+      p.pres >= maxPres * 0.5
     );
     if (!elegiveis.length) return null;
-    const sorted = [...elegiveis].sort((a, b) => a.champ - b.champ || a.goals - b.goals);
+    // Pior da tabela: menos títulos, menos vice, menos gols (mesmo critério da tabela invertido)
+    const sorted = [...elegiveis].sort((a, b) =>
+      a.champ - b.champ || a.vice - b.vice || a.goals - b.goals || a.pres - b.pres
+    );
     return sorted[0];
   })();
 
@@ -3208,7 +3211,7 @@ export default function App() {
     const sorted = [...players]
       .filter((p) => (p.tipo || 'mensalista') === 'mensalista')
       .sort(
-        (a, b) => b.champ - a.champ || b.vice - a.vice || b.goals - a.goals
+        (a, b) => b.champ - a.champ || b.vice - a.vice || b.goals - a.goals || b.pres - a.pres
       );
 
     const downloadImage = () => {

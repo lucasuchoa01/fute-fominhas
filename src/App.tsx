@@ -417,7 +417,15 @@ function top4Avg(p) {
 }
 
 function avgOverall(p) {
-  return p.overall ?? top4Avg(p);
+  if (p.overall != null && !isNaN(p.overall)) return p.overall;
+  const ata = p.ata || 65;
+  const def = p.def || 65;
+  const vel = p.vel || 65;
+  const fis = p.fis || p.dri || 65;
+  const dri = p.dri || 65;
+  const pas = p.pas || p.dri || 65;
+  const vals = [ata, def, vel, fis, dri, pas].sort((a, b) => b - a).slice(0, 4);
+  return Math.round(vals.reduce((s, v) => s + v, 0) / 4);
 }
 
 function shuffleArray(arr) {
@@ -1943,7 +1951,7 @@ export default function App() {
                     {drawn[k].map((p) => {
                       const fullPlayer = players.find((pl) => pl.id === p.id);
                       const cardUrl = fullPlayer?.cardUrl || p.cardUrl;
-                      const avg = p.overall ?? p.pendingAvg ?? avgOverall(p);
+                      const avg = fullPlayer?.overall ?? p.overall ?? p.pendingAvg ?? avgOverall(fullPlayer || p);
                       const hasCard = !!cardUrl;
                       return (
                         <div
@@ -2575,7 +2583,9 @@ export default function App() {
                   </div>
                   {drawn[k].map((p, i) => {
                     const fullP = players.find(pl => pl.id === p.id) || p;
-                    const avg = fullP.overall ?? p.pendingAvg ?? avgOverall(fullP);
+                    const avg = fullP.overall != null && !isNaN(fullP.overall)
+                      ? fullP.overall
+                      : (p.pendingAvg ?? avgOverall(fullP));
                     return (
                       <div
                         key={p.id}
@@ -2633,7 +2643,7 @@ export default function App() {
                           }}
                         >
                           <span style={{ color: '#555', fontSize: 12 }}>
-                            {p.isPending ? 'sug.' : 'méd'} {avg}
+                            {p.isPending ? 'sug.' : 'overall'} {avg}
                           </span>
                           {isAdmin && !p.isPending && (
                             <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
@@ -2680,10 +2690,10 @@ export default function App() {
                       {drawn[k].length > 0
                         ? Math.round(
                             drawn[k].reduce(
-                              (s, p) =>
-                                s +
-                                (p.pendingAvg ??
-                                  avgOverall(p)),
+                              (s, p) => {
+                                const fp = players.find(pl => pl.id === p.id) || p;
+                                return s + (p.pendingAvg ?? avgOverall(fp));
+                              },
                               0
                             ) / drawn[k].length
                           )

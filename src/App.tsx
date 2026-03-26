@@ -1730,23 +1730,42 @@ export default function App() {
     const el = document.getElementById('times-semana-export');
     if (!el) return;
 
-    // Expand overflow so all 5 cards are captured
+    // Expand all overflow:auto rows so html2canvas captures all cards
     const scrollRows = Array.from(el.querySelectorAll<HTMLElement>('[data-scroll-row]'));
-    const saved: { el: HTMLElement; overflow: string; width: string }[] = [];
+    const saved: { el: HTMLElement; overflow: string; width: string; maxWidth: string }[] = [];
+
+    // Also expand parent chain up to body to remove width constraints
+    const parents: { el: HTMLElement; overflow: string; maxWidth: string }[] = [];
+    let parent = el.parentElement;
+    while (parent && parent !== document.body) {
+      parents.push({ el: parent, overflow: parent.style.overflow, maxWidth: parent.style.maxWidth });
+      parent.style.overflow = 'visible';
+      parent.style.maxWidth = 'none';
+      parent = parent.parentElement;
+    }
+
     scrollRows.forEach((row) => {
-      saved.push({ el: row, overflow: row.style.overflow, width: row.style.width });
+      saved.push({ el: row, overflow: row.style.overflow, width: row.style.width, maxWidth: row.style.maxWidth });
       row.style.overflow = 'visible';
       row.style.width = 'max-content';
+      row.style.maxWidth = 'none';
     });
     const savedElOverflow = el.style.overflow;
+    const savedElMaxWidth = el.style.maxWidth;
     el.style.overflow = 'visible';
+    el.style.maxWidth = 'none';
+
+    // Let layout reflow
+    await new Promise(r => setTimeout(r, 50));
+    // Exact width: 5 cards (80px) + 4 gaps (6px) + row padding (28px) + outer padding (16px)
+    const fullWidth = 5 * 80 + 4 * 6 + 28 + 16 + 4; // 476px
 
     try {
       const canvas = await (window as any).html2canvas(el, {
         backgroundColor: '#0a0a0a', scale: 2, useCORS: true, allowTaint: true,
         logging: false, scrollX: 0, scrollY: 0,
-        width: el.scrollWidth,
-        windowWidth: el.scrollWidth,
+        width: fullWidth,
+        windowWidth: fullWidth,
       });
       canvas.toBlob((blob: Blob | null) => {
         if (!blob) return;
@@ -1760,8 +1779,10 @@ export default function App() {
     } catch (err) {
       alert('Erro ao exportar: ' + (err as Error).message);
     } finally {
-      saved.forEach(({ el: row, overflow, width }) => { row.style.overflow = overflow; row.style.width = width; });
+      saved.forEach(({ el: row, overflow, width, maxWidth }) => { row.style.overflow = overflow; row.style.width = width; row.style.maxWidth = maxWidth; });
       el.style.overflow = savedElOverflow;
+      el.style.maxWidth = savedElMaxWidth;
+      parents.forEach(({ el: p, overflow, maxWidth }) => { p.style.overflow = overflow; p.style.maxWidth = maxWidth; });
     }
   };
 

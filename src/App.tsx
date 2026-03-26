@@ -1456,6 +1456,7 @@ export default function App() {
     return {
       name: tied.map((p) => p.name).join(' / '),
       goals: scorers[first.id] || 0,
+      cardUrl: tied.length === 1 ? (first.cardUrl || null) : null,
     };
   })();
 
@@ -1645,7 +1646,16 @@ export default function App() {
 
         {/* Card Pikinha da Noite */}
         <div className="card" style={{ textAlign: 'center', padding: 14 }}>
-          <div style={{ fontSize: 22 }}>⚽</div>
+          {currentTopScorer?.cardUrl ? (
+            <img
+              src={currentTopScorer.cardUrl}
+              alt={currentTopScorer.name}
+              onClick={() => setCardModal(players.find(p => normalizeName(p.name) === normalizeName(currentTopScorer.name)))}
+              style={{ width: '100%', maxHeight: 160, objectFit: 'contain', objectPosition: 'top', borderRadius: 8, cursor: 'pointer', marginBottom: 6 }}
+            />
+          ) : (
+            <div style={{ fontSize: 22 }}>⚽</div>
+          )}
           <div style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: currentTopScorer && currentTopScorer.name.length > 10 ? 16 : 24, color: '#4ade80', margin: '4px 0', lineHeight: 1.1 }}>
             {currentTopScorer ? currentTopScorer.name : '—'}
           </div>

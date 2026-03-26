@@ -2574,9 +2574,8 @@ export default function App() {
                     </span>
                   </div>
                   {drawn[k].map((p, i) => {
-                    const avg = Math.round(
-                      p.overall ?? p.pendingAvg ?? avgOverall(p)
-                    );
+                    const fullP = players.find(pl => pl.id === p.id) || p;
+                    const avg = fullP.overall ?? p.pendingAvg ?? avgOverall(fullP);
                     return (
                       <div
                         key={p.id}

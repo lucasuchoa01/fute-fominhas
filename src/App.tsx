@@ -51,6 +51,7 @@ const INITIAL_PLAYERS = [
     dri: 91,
     fis: 91,
     pas: 91,
+    overall: 90,
     goals: 65,
     champ: 9,
     vice: 2,
@@ -68,6 +69,7 @@ const INITIAL_PLAYERS = [
     dri: 71,
     fis: 71,
     pas: 71,
+    overall: 78,
     goals: 74,
     champ: 7,
     vice: 4,
@@ -85,6 +87,7 @@ const INITIAL_PLAYERS = [
     dri: 69,
     fis: 69,
     pas: 69,
+    overall: 70,
     goals: 23,
     champ: 7,
     vice: 3,
@@ -102,6 +105,7 @@ const INITIAL_PLAYERS = [
     dri: 70,
     fis: 70,
     pas: 70,
+    overall: 71,
     goals: 28,
     champ: 7,
     vice: 2,
@@ -119,6 +123,7 @@ const INITIAL_PLAYERS = [
     dri: 78,
     fis: 78,
     pas: 78,
+    overall: 76,
     goals: 28,
     champ: 6,
     vice: 1,
@@ -136,6 +141,7 @@ const INITIAL_PLAYERS = [
     dri: 50,
     fis: 50,
     pas: 50,
+    overall: 54,
     goals: 36,
     champ: 4,
     vice: 6,
@@ -153,6 +159,7 @@ const INITIAL_PLAYERS = [
     dri: 74,
     fis: 74,
     pas: 74,
+    overall: 80,
     goals: 21,
     champ: 4,
     vice: 1,
@@ -170,6 +177,7 @@ const INITIAL_PLAYERS = [
     dri: 69,
     fis: 69,
     pas: 69,
+    overall: 69,
     goals: 54,
     champ: 3,
     vice: 6,
@@ -187,6 +195,7 @@ const INITIAL_PLAYERS = [
     dri: 72,
     fis: 72,
     pas: 72,
+    overall: 77,
     goals: 48,
     champ: 3,
     vice: 3,
@@ -204,6 +213,7 @@ const INITIAL_PLAYERS = [
     dri: 49,
     fis: 49,
     pas: 49,
+    overall: 52,
     goals: 10,
     champ: 3,
     vice: 1,
@@ -221,6 +231,7 @@ const INITIAL_PLAYERS = [
     dri: 75,
     fis: 75,
     pas: 75,
+    overall: 76,
     goals: 32,
     champ: 2,
     vice: 9,
@@ -238,6 +249,7 @@ const INITIAL_PLAYERS = [
     dri: 61,
     fis: 61,
     pas: 61,
+    overall: 63,
     goals: 14,
     champ: 3,
     vice: 0,
@@ -255,6 +267,7 @@ const INITIAL_PLAYERS = [
     dri: 75,
     fis: 75,
     pas: 75,
+    overall: 76,
     goals: 19,
     champ: 2,
     vice: 3,
@@ -272,6 +285,7 @@ const INITIAL_PLAYERS = [
     dri: 71,
     fis: 71,
     pas: 71,
+    overall: 74,
     goals: 8,
     champ: 2,
     vice: 2,
@@ -289,6 +303,7 @@ const INITIAL_PLAYERS = [
     dri: 65,
     fis: 65,
     pas: 65,
+    overall: 70,
     goals: 19,
     champ: 1,
     vice: 4,
@@ -306,6 +321,7 @@ const INITIAL_PLAYERS = [
     dri: 55,
     fis: 55,
     pas: 55,
+    overall: 55,
     goals: 8,
     champ: 3,
     vice: 0,
@@ -323,6 +339,7 @@ const INITIAL_PLAYERS = [
     dri: 45,
     fis: 45,
     pas: 45,
+    overall: 50,
     goals: 11,
     champ: 0,
     vice: 4,
@@ -393,8 +410,14 @@ function normalizeName(name = '') {
   return name.trim().toLowerCase();
 }
 
+function top4Avg(p) {
+  const vals = [p.ata, p.def, p.vel, p.fis ?? p.dri, p.dri, p.pas ?? p.dri]
+    .sort((a, b) => b - a).slice(0, 4);
+  return Math.round(vals.reduce((s, v) => s + v, 0) / 4);
+}
+
 function avgOverall(p) {
-  return Math.round((p.ata + p.def + p.vel + (p.fis ?? p.dri) + p.dri + (p.pas ?? p.dri)) / 6);
+  return p.overall ?? top4Avg(p);
 }
 
 function shuffleArray(arr) {
@@ -482,6 +505,7 @@ function fillPendingSlots(teams, basePlayers) {
       fis: desiredAvg,
       dri: desiredAvg,
       pas: desiredAvg,
+      overall: desiredAvg,
       pendingAvg: desiredAvg,
       isPending: true,
       tipo: 'pendente',
@@ -815,6 +839,30 @@ function AddPlayerModal({
             </span>
           </div>
         </div>
+        {/* Overall editável */}
+        <div style={{ marginBottom: 10 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+            <label className="lbl" style={{ margin: 0 }}>OVERALL</label>
+            <button
+              type="button"
+              onClick={() => {
+                const vals = [newP.ata, newP.def, newP.vel, newP.fis ?? newP.dri, newP.dri, newP.pas ?? newP.dri]
+                  .sort((a, b) => b - a).slice(0, 4);
+                set('overall', Math.round(vals.reduce((s, v) => s + v, 0) / 4));
+              }}
+              style={{ background: 'none', border: '1px solid #2a5a2a', borderRadius: 6, padding: '2px 10px', fontSize: 10, color: '#4ade80', cursor: 'pointer', fontWeight: 700 }}
+            >AUTO</button>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <input type="range" min="1" max="99" value={newP.overall ?? 65}
+              onChange={(e) => set('overall', parseInt(e.target.value))}
+              style={{ flex: 1, accentColor: RANK_COLOR[suggested] }} />
+            <input inputMode="numeric" pattern="[0-9]*" type="text" className="inp"
+              style={{ width: 52, marginBottom: 0, textAlign: 'center', padding: '6px 4px', fontSize: 13 }}
+              value={newP.overall ?? 65}
+              onChange={(e) => set('overall', Math.max(1, Math.min(99, parseInt(String(e.target.value).replace(/\D/g,'')) || 1)))} />
+          </div>
+        </div>
         <label className="lbl">RANKING</label>
         <div style={{ display: 'flex', gap: 6, marginBottom: 10 }}>
           {['A', 'B', 'C', 'D', 'E'].map((r) => (
@@ -939,6 +987,7 @@ function AddPlayerModal({
                 fis: 65,
                 dri: 65,
                 pas: 65,
+                overall: 65,
               });
             }}
           >
@@ -1132,6 +1181,30 @@ function ModalEdit({ editP, setEditP, setShowEdt, players, updatePlayers }) {
           </div>
         </div>
 
+        {/* Overall editável */}
+        <div style={{ marginBottom: 10 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+            <label className="lbl" style={{ margin: 0 }}>OVERALL</label>
+            <button
+              type="button"
+              onClick={() => {
+                const vals = [editP.ata, editP.def, editP.vel, editP.fis ?? editP.dri, editP.dri, editP.pas ?? editP.dri]
+                  .sort((a, b) => b - a).slice(0, 4);
+                set('overall', Math.round(vals.reduce((s, v) => s + v, 0) / 4));
+              }}
+              style={{ background: 'none', border: '1px solid #2a5a2a', borderRadius: 6, padding: '2px 10px', fontSize: 10, color: '#4ade80', cursor: 'pointer', fontWeight: 700 }}
+            >AUTO</button>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <input type="range" min="1" max="99" value={editP.overall ?? top4Avg(editP)}
+              onChange={(e) => set('overall', parseInt(e.target.value))}
+              style={{ flex: 1, accentColor: RANK_COLOR[suggested] }} />
+            <input inputMode="numeric" pattern="[0-9]*" type="text" className="inp"
+              style={{ width: 52, marginBottom: 0, textAlign: 'center', padding: '6px 4px', fontSize: 13 }}
+              value={editP.overall ?? top4Avg(editP)}
+              onChange={(e) => set('overall', Math.max(1, Math.min(99, parseInt(String(e.target.value).replace(/\D/g,'')) || 1)))} />
+          </div>
+        </div>
         {/* Ranking com sugestão */}
         <label className="lbl">RANKING</label>
         <div style={{ display: 'flex', gap: 6, marginBottom: 10 }}>
@@ -1267,6 +1340,7 @@ export default function App() {
     fis: 65,
     dri: 65,
     pas: 65,
+    overall: 65,
   });
   const [addPlayerConfig, setAddPlayerConfig] = useState({
     title: 'NOVO JOGADOR',
@@ -1399,6 +1473,7 @@ export default function App() {
       fis: 65,
       dri: 65,
       pas: 65,
+      overall: 65,
     });
     setAddPlayerConfig({ title, onAdded });
     setShowAdd(true);
@@ -1668,7 +1743,7 @@ export default function App() {
       ctx.strokeStyle = rc; ctx.lineWidth = 2;
       ctx.beginPath(); ctx.roundRect(x, y, w, h, 8); ctx.stroke();
       ctx.font = 'bold 9px Arial'; ctx.fillStyle = rc; ctx.textAlign = 'center';
-      const avg = Math.round((p.ata + p.def + p.vel + (p.fis ?? p.dri) + p.dri + (p.pas ?? p.dri)) / 6);
+      const avg = p.overall ?? avgOverall(p);
       ctx.fillText(String(avg), x + w/2, y + 18);
       ctx.font = 'bold 16px Arial'; ctx.fillStyle = '#fff';
       ctx.fillText(p.name.trim().split(' ')[0].slice(0, 3).toUpperCase(), x + w/2, y + h/2 + 6);
@@ -1868,7 +1943,7 @@ export default function App() {
                     {drawn[k].map((p) => {
                       const fullPlayer = players.find((pl) => pl.id === p.id);
                       const cardUrl = fullPlayer?.cardUrl || p.cardUrl;
-                      const avg = Math.round(p.pendingAvg ?? (p.ata + p.def + p.vel + (p.fis ?? p.dri) + p.dri + (p.pas ?? p.dri)) / 6);
+                      const avg = p.overall ?? p.pendingAvg ?? avgOverall(p);
                       const hasCard = !!cardUrl;
                       return (
                         <div
@@ -1945,7 +2020,7 @@ export default function App() {
     const avulsos = players.filter((p) => p.tipo === 'avulso');
 
     const PlayerCard = ({ p }) => {
-      const avg = Math.round((p.ata + p.def + p.vel + (p.fis ?? p.dri) + p.dri + (p.pas ?? p.dri)) / 6);
+      const avg = p.overall ?? avgOverall(p);
       const isMens = (p.tipo || 'mensalista') === 'mensalista';
       return (
         <div
@@ -2500,7 +2575,7 @@ export default function App() {
                   </div>
                   {drawn[k].map((p, i) => {
                     const avg = Math.round(
-                      p.pendingAvg ?? (p.ata + p.def + p.vel + (p.fis ?? p.dri) + p.dri + (p.pas ?? p.dri)) / 6
+                      p.overall ?? p.pendingAvg ?? avgOverall(p)
                     );
                     return (
                       <div
@@ -2609,7 +2684,7 @@ export default function App() {
                               (s, p) =>
                                 s +
                                 (p.pendingAvg ??
-                                  (p.ata + p.def + p.vel + (p.fis ?? p.dri) + p.dri + (p.pas ?? p.dri)) / 6),
+                                  avgOverall(p)),
                               0
                             ) / drawn[k].length
                           )

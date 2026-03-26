@@ -48,7 +48,9 @@ const INITIAL_PLAYERS = [
     ata: 88,
     def: 60,
     vel: 85,
-    hab: 91,
+    dri: 91,
+    fis: 91,
+    pas: 91,
     goals: 65,
     champ: 9,
     vice: 2,
@@ -63,7 +65,9 @@ const INITIAL_PLAYERS = [
     ata: 84,
     def: 75,
     vel: 80,
-    hab: 71,
+    dri: 71,
+    fis: 71,
+    pas: 71,
     goals: 74,
     champ: 7,
     vice: 4,
@@ -78,7 +82,9 @@ const INITIAL_PLAYERS = [
     ata: 65,
     def: 72,
     vel: 55,
-    hab: 69,
+    dri: 69,
+    fis: 69,
+    pas: 69,
     goals: 23,
     champ: 7,
     vice: 3,
@@ -93,7 +99,9 @@ const INITIAL_PLAYERS = [
     ata: 60,
     def: 75,
     vel: 55,
-    hab: 70,
+    dri: 70,
+    fis: 70,
+    pas: 70,
     goals: 28,
     champ: 7,
     vice: 2,
@@ -108,7 +116,9 @@ const INITIAL_PLAYERS = [
     ata: 70,
     def: 70,
     vel: 65,
-    hab: 78,
+    dri: 78,
+    fis: 78,
+    pas: 78,
     goals: 28,
     champ: 6,
     vice: 1,
@@ -123,7 +133,9 @@ const INITIAL_PLAYERS = [
     ata: 65,
     def: 45,
     vel: 40,
-    hab: 50,
+    dri: 50,
+    fis: 50,
+    pas: 50,
     goals: 36,
     champ: 4,
     vice: 6,
@@ -138,7 +150,9 @@ const INITIAL_PLAYERS = [
     ata: 83,
     def: 72,
     vel: 90,
-    hab: 74,
+    dri: 74,
+    fis: 74,
+    pas: 74,
     goals: 21,
     champ: 4,
     vice: 1,
@@ -153,7 +167,9 @@ const INITIAL_PLAYERS = [
     ata: 70,
     def: 69,
     vel: 62,
-    hab: 69,
+    dri: 69,
+    fis: 69,
+    pas: 69,
     goals: 54,
     champ: 3,
     vice: 6,
@@ -168,7 +184,9 @@ const INITIAL_PLAYERS = [
     ata: 85,
     def: 65,
     vel: 80,
-    hab: 72,
+    dri: 72,
+    fis: 72,
+    pas: 72,
     goals: 48,
     champ: 3,
     vice: 3,
@@ -183,7 +201,9 @@ const INITIAL_PLAYERS = [
     ata: 48,
     def: 62,
     vel: 40,
-    hab: 49,
+    dri: 49,
+    fis: 49,
+    pas: 49,
     goals: 10,
     champ: 3,
     vice: 1,
@@ -198,7 +218,9 @@ const INITIAL_PLAYERS = [
     ata: 72,
     def: 72,
     vel: 79,
-    hab: 75,
+    dri: 75,
+    fis: 75,
+    pas: 75,
     goals: 32,
     champ: 2,
     vice: 9,
@@ -213,7 +235,9 @@ const INITIAL_PLAYERS = [
     ata: 65,
     def: 65,
     vel: 62,
-    hab: 61,
+    dri: 61,
+    fis: 61,
+    pas: 61,
     goals: 14,
     champ: 3,
     vice: 0,
@@ -228,7 +252,9 @@ const INITIAL_PLAYERS = [
     ata: 75,
     def: 62,
     vel: 78,
-    hab: 75,
+    dri: 75,
+    fis: 75,
+    pas: 75,
     goals: 19,
     champ: 2,
     vice: 3,
@@ -243,7 +269,9 @@ const INITIAL_PLAYERS = [
     ata: 78,
     def: 77,
     vel: 71,
-    hab: 71,
+    dri: 71,
+    fis: 71,
+    pas: 71,
     goals: 8,
     champ: 2,
     vice: 2,
@@ -258,7 +286,9 @@ const INITIAL_PLAYERS = [
     ata: 60,
     def: 85,
     vel: 60,
-    hab: 65,
+    dri: 65,
+    fis: 65,
+    pas: 65,
     goals: 19,
     champ: 1,
     vice: 4,
@@ -273,7 +303,9 @@ const INITIAL_PLAYERS = [
     ata: 55,
     def: 55,
     vel: 55,
-    hab: 55,
+    dri: 55,
+    fis: 55,
+    pas: 55,
     goals: 8,
     champ: 3,
     vice: 0,
@@ -288,7 +320,9 @@ const INITIAL_PLAYERS = [
     ata: 52,
     def: 55,
     vel: 48,
-    hab: 45,
+    dri: 45,
+    fis: 45,
+    pas: 45,
     goals: 11,
     champ: 0,
     vice: 4,
@@ -346,8 +380,8 @@ const INIT_FINAL = { tA: 'vermelho', tB: 'azul', sA: '', sB: '' };
 
 // ============ UTILS ============
 
-function suggestRanking(ata, def, vel, hab) {
-  const avg = Math.round((ata + def + vel + hab) / 4);
+function suggestRanking(ata, def, vel, fis, dri, pas) {
+  const avg = Math.round((ata + def + vel + fis + dri + pas) / 6);
   if (avg >= 82) return 'A';
   if (avg >= 72) return 'B';
   if (avg >= 62) return 'C';
@@ -360,7 +394,7 @@ function normalizeName(name = '') {
 }
 
 function avgOverall(p) {
-  return Math.round((p.ata + p.def + p.vel + p.hab) / 4);
+  return Math.round((p.ata + p.def + p.vel + (p.fis ?? p.dri) + p.dri + (p.pas ?? p.dri)) / 6);
 }
 
 function shuffleArray(arr) {
@@ -445,7 +479,9 @@ function fillPendingSlots(teams, basePlayers) {
       ata: desiredAvg,
       def: desiredAvg,
       vel: desiredAvg,
-      hab: desiredAvg,
+      fis: desiredAvg,
+      dri: desiredAvg,
+      pas: desiredAvg,
       pendingAvg: desiredAvg,
       isPending: true,
       tipo: 'pendente',
@@ -647,8 +683,8 @@ function AddPlayerModal({
   if (!show) return null;
 
   const set = (k, v) => setNewP((prev) => ({ ...prev, [k]: v }));
-  const suggested = suggestRanking(newP.ata, newP.def, newP.vel, newP.hab);
-  const avg = Math.round((newP.ata + newP.def + newP.vel + newP.hab) / 4);
+  const suggested = suggestRanking(newP.ata, newP.def, newP.vel, newP.fis ?? newP.dri, newP.dri, newP.pas ?? newP.dri);
+  const avg = Math.round((newP.ata + newP.def + newP.vel + (newP.fis ?? newP.dri) + newP.dri + (newP.pas ?? newP.dri)) / 6);
   const rankChanged = newP.ranking !== suggested;
 
   return (
@@ -698,7 +734,9 @@ function AddPlayerModal({
             ['ATA', 'ata'],
             ['DEF', 'def'],
             ['VEL', 'vel'],
-            ['HAB', 'hab'],
+            ['FIS', 'fis'],
+            ['DRI', 'dri'],
+            ['PAS', 'pas'],
           ].map(([l, k]) => (
             <div
               key={k}
@@ -898,7 +936,9 @@ function AddPlayerModal({
                 ata: 65,
                 def: 65,
                 vel: 65,
-                hab: 65,
+                fis: 65,
+                dri: 65,
+                pas: 65,
               });
             }}
           >
@@ -912,8 +952,8 @@ function AddPlayerModal({
 function ModalEdit({ editP, setEditP, setShowEdt, players, updatePlayers }) {
   if (!editP) return null;
   const set = (k, v) => setEditP((prev) => ({ ...prev, [k]: v }));
-  const suggested = suggestRanking(editP.ata, editP.def, editP.vel, editP.hab);
-  const avg = Math.round((editP.ata + editP.def + editP.vel + editP.hab) / 4);
+  const suggested = suggestRanking(editP.ata, editP.def, editP.vel, editP.fis ?? editP.dri, editP.dri, editP.pas ?? editP.dri);
+  const avg = Math.round((editP.ata + editP.def + editP.vel + (editP.fis ?? editP.dri) + editP.dri + (editP.pas ?? editP.dri)) / 6);
   const rankChanged = editP.ranking !== suggested;
   return (
     <div className="overlay" onClick={() => setShowEdt(false)}>
@@ -1021,7 +1061,9 @@ function ModalEdit({ editP, setEditP, setShowEdt, players, updatePlayers }) {
             ['ATA', 'ata'],
             ['DEF', 'def'],
             ['VEL', 'vel'],
-            ['HAB', 'hab'],
+            ['FIS', 'fis'],
+            ['DRI', 'dri'],
+            ['PAS', 'pas'],
           ].map(([l, k]) => (
             <div
               key={k}
@@ -1222,7 +1264,9 @@ export default function App() {
     ata: 65,
     def: 65,
     vel: 65,
-    hab: 65,
+    fis: 65,
+    dri: 65,
+    pas: 65,
   });
   const [addPlayerConfig, setAddPlayerConfig] = useState({
     title: 'NOVO JOGADOR',
@@ -1352,7 +1396,9 @@ export default function App() {
       ata: 65,
       def: 65,
       vel: 65,
-      hab: 65,
+      fis: 65,
+      dri: 65,
+      pas: 65,
     });
     setAddPlayerConfig({ title, onAdded });
     setShowAdd(true);
@@ -1587,67 +1633,98 @@ export default function App() {
   // ── INICIO ──────────────────────────────────────────────────────────────────
   const exportTimes = async () => {
     if (!drawn) return;
+    const CARD_W = 90, CARD_H = 126, GAP = 6, PAD = 16;
+    const HEADER_H = 70, TEAM_LABEL_H = 36, TEAM_PAD = 12;
+    const teamKeys = Object.keys(TEAMS_CFG);
+    const totalH = HEADER_H + teamKeys.length * (TEAM_LABEL_H + CARD_H + TEAM_PAD * 2 + GAP) + PAD;
+    const totalW = PAD * 2 + 5 * CARD_W + 4 * GAP;
+    const canvas = document.createElement('canvas');
+    const scale = 2;
+    canvas.width = totalW * scale;
+    canvas.height = totalH * scale;
+    const ctx = canvas.getContext('2d');
+    ctx.scale(scale, scale);
 
-    // Load html2canvas from CDN on demand
-    if (!(window as any).html2canvas) {
-      await new Promise<void>((resolve, reject) => {
-        const s = document.createElement('script');
-        s.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
-        s.onload = () => resolve();
-        s.onerror = () => reject(new Error('Falha ao carregar html2canvas'));
-        document.head.appendChild(s);
+    // Background
+    ctx.fillStyle = '#0a0a0a';
+    ctx.fillRect(0, 0, totalW, totalH);
+
+    // Header
+    ctx.fillStyle = '#111';
+    ctx.fillRect(0, 0, totalW, HEADER_H);
+    ctx.font = 'bold 13px Arial';
+    ctx.fillStyle = '#4ade80';
+    ctx.textAlign = 'center';
+    ctx.fillText('FOMINHAS LEAGUE', totalW / 2, 26);
+    ctx.font = 'bold 18px Arial';
+    ctx.fillText('TIMES DA SEMANA', totalW / 2, 52);
+
+    const RANK_COLORS = { A: '#f59e0b', B: '#f97316', C: '#3b82f6', D: '#6b7280', E: '#374151' };
+
+    const drawDefaultCard = (ctx, p, x, y, w, h) => {
+      const rc = RANK_COLORS[p.ranking] || '#555';
+      ctx.fillStyle = '#1c1c1c';
+      ctx.beginPath(); ctx.roundRect(x, y, w, h, 8); ctx.fill();
+      ctx.strokeStyle = rc; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.roundRect(x, y, w, h, 8); ctx.stroke();
+      ctx.font = 'bold 9px Arial'; ctx.fillStyle = rc; ctx.textAlign = 'center';
+      const avg = Math.round((p.ata + p.def + p.vel + (p.fis ?? p.dri) + p.dri + (p.pas ?? p.dri)) / 6);
+      ctx.fillText(String(avg), x + w/2, y + 18);
+      ctx.font = 'bold 16px Arial'; ctx.fillStyle = '#fff';
+      ctx.fillText(p.name.trim().split(' ')[0].slice(0, 3).toUpperCase(), x + w/2, y + h/2 + 6);
+      ctx.font = 'bold 10px Arial'; ctx.fillStyle = '#000';
+      ctx.fillStyle = rc;
+      ctx.beginPath(); ctx.roundRect(x + w/2 - 10, y + h - 20, 20, 14, 3); ctx.fill();
+      ctx.fillStyle = '#000'; ctx.font = 'bold 9px Arial';
+      ctx.fillText(p.ranking, x + w/2, y + h - 10);
+    };
+
+    let teamY = HEADER_H + GAP;
+    for (const key of teamKeys) {
+      const cfg = TEAMS_CFG[key];
+      const teamPlayers = (drawn[key] || []);
+
+      // Team label bg
+      ctx.fillStyle = cfg.color + '22';
+      ctx.beginPath(); ctx.roundRect(PAD, teamY, totalW - PAD*2, TEAM_LABEL_H + CARD_H + TEAM_PAD, 10); ctx.fill();
+      ctx.strokeStyle = cfg.color + '55'; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.roundRect(PAD, teamY, totalW - PAD*2, TEAM_LABEL_H + CARD_H + TEAM_PAD, 10); ctx.stroke();
+
+      // Team name
+      ctx.font = 'bold 14px Arial'; ctx.fillStyle = cfg.color; ctx.textAlign = 'left';
+      ctx.fillText(cfg.emoji + ' ' + cfg.label.toUpperCase(), PAD + 12, teamY + 24);
+
+      // Cards row
+      const cardsY = teamY + TEAM_LABEL_H;
+      const loadPromises = teamPlayers.map((p, i) => {
+        return new Promise((resolve) => {
+          const cx = PAD + i * (CARD_W + GAP);
+          if (p.cardUrl) {
+            const img = new Image();
+            img.crossOrigin = 'anonymous';
+            img.onload = () => {
+              ctx.save();
+              ctx.beginPath(); ctx.roundRect(cx, cardsY, CARD_W, CARD_H, 8); ctx.clip();
+              ctx.drawImage(img, cx, cardsY, CARD_W, CARD_H);
+              ctx.restore();
+              resolve();
+            };
+            img.onerror = () => { drawDefaultCard(ctx, p, cx, cardsY, CARD_W, CARD_H); resolve(); };
+            img.src = p.cardUrl;
+          } else {
+            drawDefaultCard(ctx, p, cx, cardsY, CARD_W, CARD_H);
+            resolve();
+          }
+        });
       });
+      await Promise.all(loadPromises);
+      teamY += TEAM_LABEL_H + CARD_H + TEAM_PAD * 2;
     }
 
-    const el = document.getElementById('times-semana-export');
-    if (!el) { alert('Elemento não encontrado'); return; }
-
-    // Expand all overflow:auto rows so html2canvas captures all cards
-    const scrollRows = Array.from(el.querySelectorAll<HTMLElement>('[data-scroll-row]'));
-    const origStyles: { el: HTMLElement; overflow: string; width: string }[] = [];
-    scrollRows.forEach((row) => {
-      origStyles.push({ el: row, overflow: row.style.overflow, width: row.style.width });
-      row.style.overflow = 'visible';
-      row.style.width = 'max-content';
-    });
-
-    // Also expand the outer container to full width
-    const origElOverflow = el.style.overflow;
-    const origElWidth = el.style.width;
-    el.style.overflow = 'visible';
-    el.style.width = 'max-content';
-
-    try {
-      const canvas = await (window as any).html2canvas(el, {
-        backgroundColor: '#0a0a0a',
-        scale: 2,
-        useCORS: true,
-        allowTaint: true,
-        logging: false,
-        scrollX: 0,
-        scrollY: 0,
-      });
-
-      canvas.toBlob((blob: Blob | null) => {
-        if (!blob) return;
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.download = 'times-fominhas-' + new Date().toISOString().slice(0, 10) + '.png';
-        link.href = url;
-        link.click();
-        setTimeout(() => URL.revokeObjectURL(url), 5000);
-      }, 'image/png');
-    } catch (err) {
-      alert('Erro ao exportar: ' + (err as Error).message);
-    } finally {
-      // Restore styles
-      origStyles.forEach(({ el: row, overflow, width }) => {
-        row.style.overflow = overflow;
-        row.style.width = width;
-      });
-      el.style.overflow = origElOverflow;
-      el.style.width = origElWidth;
-    }
+    const link = document.createElement('a');
+    link.download = 'times-fominhas-' + new Date().toISOString().slice(0,10) + '.png';
+    link.href = canvas.toDataURL('image/png');
+    link.click();
   };
 
   const TabInicio = () => (
@@ -1753,7 +1830,7 @@ export default function App() {
       </div>
 
       {drawn && (
-        <div id="times-semana-export" style={{ background: '#0a0a0a', borderRadius: 12 }}>
+        <div>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
         <div className="stitle" style={{ margin: 0 }}>Times da Semana</div>
         <button
@@ -1787,14 +1864,12 @@ export default function App() {
                   >
                     {cfg.emoji} TIME {cfg.label.toUpperCase()}
                   </div>
-                  <div data-scroll-row="1" style={{ display: 'flex', gap: 6, overflowX: 'auto', paddingBottom: 4 }}>
+                  <div style={{ display: 'flex', gap: 6, overflowX: 'auto', paddingBottom: 4 }}>
                     {drawn[k].map((p) => {
                       const fullPlayer = players.find((pl) => pl.id === p.id);
                       const cardUrl = fullPlayer?.cardUrl || p.cardUrl;
-                      const avg = Math.round(p.pendingAvg ?? (p.ata + p.def + p.vel + p.hab) / 4);
+                      const avg = Math.round(p.pendingAvg ?? (p.ata + p.def + p.vel + (p.fis ?? p.dri) + p.dri + (p.pas ?? p.dri)) / 6);
                       const hasCard = !!cardUrl;
-                      const firstName = p.isPending ? 'Pendente' : p.name.trim().split(' ')[0];
-                      const nameFontSize = Math.min(20, Math.max(10, Math.floor(64 / (firstName.length * 0.55))));
                       return (
                         <div
                           key={p.id}
@@ -1838,18 +1913,17 @@ export default function App() {
                                   alignItems: 'center',
                                   justifyContent: 'center',
                                   gap: 2,
-                                  padding: '0 4px',
                                 }}
                               >
                                 <span style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 13, color: RANK_COLOR[p.ranking] }}>{avg}</span>
-                                <span style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: p.isPending ? 22 : nameFontSize, color: '#eee', lineHeight: 1, textAlign: 'center' }}>{p.isPending ? '?' : firstName.toUpperCase()}</span>
+                                <span style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 22, color: '#eee', lineHeight: 1 }}>{p.isPending ? '?' : initials(p.name)}</span>
                                 <span style={{ background: RANK_COLOR[p.ranking], color: '#000', fontSize: 9, fontWeight: 900, padding: '1px 6px', borderRadius: 4, marginTop: 2 }}>{p.ranking}</span>
                               </div>
                             )}
                           </div>
                           {/* Name below card */}
                           <span style={{ fontSize: 10, fontWeight: 700, color: p.isPending ? '#555' : cfg.color, textAlign: 'center', lineHeight: 1.2, maxWidth: 80, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                            {firstName}
+                            {p.isPending ? 'Pendente' : p.name.split(' ')[0]}
                           </span>
                         </div>
                       );
@@ -1871,7 +1945,7 @@ export default function App() {
     const avulsos = players.filter((p) => p.tipo === 'avulso');
 
     const PlayerCard = ({ p }) => {
-      const avg = Math.round((p.ata + p.def + p.vel + p.hab) / 4);
+      const avg = Math.round((p.ata + p.def + p.vel + (p.fis ?? p.dri) + p.dri + (p.pas ?? p.dri)) / 6);
       const isMens = (p.tipo || 'mensalista') === 'mensalista';
       return (
         <div
@@ -2012,7 +2086,9 @@ export default function App() {
                 ['ATA', p.ata],
                 ['DEF', p.def],
                 ['VEL', p.vel],
-                ['HAB', p.hab],
+                ['FIS', p.fis ?? p.dri],
+                ['DRI', p.dri],
+                ['PAS', p.pas ?? p.dri],
               ].map(([l, v]) => (
                 <div key={l} style={{ textAlign: 'center' }}>
                   <div
@@ -2424,7 +2500,7 @@ export default function App() {
                   </div>
                   {drawn[k].map((p, i) => {
                     const avg = Math.round(
-                      p.pendingAvg ?? (p.ata + p.def + p.vel + p.hab) / 4
+                      p.pendingAvg ?? (p.ata + p.def + p.vel + (p.fis ?? p.dri) + p.dri + (p.pas ?? p.dri)) / 6
                     );
                     return (
                       <div
@@ -2533,7 +2609,7 @@ export default function App() {
                               (s, p) =>
                                 s +
                                 (p.pendingAvg ??
-                                  (p.ata + p.def + p.vel + p.hab) / 4),
+                                  (p.ata + p.def + p.vel + (p.fis ?? p.dri) + p.dri + (p.pas ?? p.dri)) / 6),
                               0
                             ) / drawn[k].length
                           )

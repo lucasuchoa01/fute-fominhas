@@ -1745,6 +1745,8 @@ export default function App() {
       const canvas = await (window as any).html2canvas(el, {
         backgroundColor: '#0a0a0a', scale: 2, useCORS: true, allowTaint: true,
         logging: false, scrollX: 0, scrollY: 0,
+        width: el.scrollWidth,
+        windowWidth: el.scrollWidth,
       });
       canvas.toBlob((blob: Blob | null) => {
         if (!blob) return;

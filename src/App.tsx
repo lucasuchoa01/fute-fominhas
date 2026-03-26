@@ -397,12 +397,12 @@ const INIT_FINAL = { tA: 'vermelho', tB: 'azul', sA: '', sB: '' };
 
 // ============ UTILS ============
 
-function suggestRanking(ata, def, vel, fis, dri, pas) {
-  const avg = Math.round((ata + def + vel + fis + dri + pas) / 6);
-  if (avg >= 82) return 'A';
-  if (avg >= 72) return 'B';
-  if (avg >= 62) return 'C';
-  if (avg >= 52) return 'D';
+function suggestRanking(ata, def, vel, fis, dri, pas, overall?) {
+  const ref = overall ?? Math.round([ata, def, vel, fis, dri, pas].sort((a, b) => b - a).slice(0, 4).reduce((s, v) => s + v, 0) / 4);
+  if (ref >= 90) return 'A';
+  if (ref >= 80) return 'B';
+  if (ref >= 70) return 'C';
+  if (ref >= 60) return 'D';
   return 'E';
 }
 
@@ -707,7 +707,7 @@ function AddPlayerModal({
   if (!show) return null;
 
   const set = (k, v) => setNewP((prev) => ({ ...prev, [k]: v }));
-  const suggested = suggestRanking(newP.ata, newP.def, newP.vel, newP.fis ?? newP.dri, newP.dri, newP.pas ?? newP.dri);
+  const suggested = suggestRanking(newP.ata, newP.def, newP.vel, newP.fis ?? newP.dri, newP.dri, newP.pas ?? newP.dri, newP.overall);
   const avg = Math.round((newP.ata + newP.def + newP.vel + (newP.fis ?? newP.dri) + newP.dri + (newP.pas ?? newP.dri)) / 6);
   const rankChanged = newP.ranking !== suggested;
 
@@ -1001,7 +1001,7 @@ function AddPlayerModal({
 function ModalEdit({ editP, setEditP, setShowEdt, players, updatePlayers }) {
   if (!editP) return null;
   const set = (k, v) => setEditP((prev) => ({ ...prev, [k]: v }));
-  const suggested = suggestRanking(editP.ata, editP.def, editP.vel, editP.fis ?? editP.dri, editP.dri, editP.pas ?? editP.dri);
+  const suggested = suggestRanking(editP.ata, editP.def, editP.vel, editP.fis ?? editP.dri, editP.dri, editP.pas ?? editP.dri, editP.overall);
   const avg = Math.round((editP.ata + editP.def + editP.vel + (editP.fis ?? editP.dri) + editP.dri + (editP.pas ?? editP.dri)) / 6);
   const rankChanged = editP.ranking !== suggested;
   return (

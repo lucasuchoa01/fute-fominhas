@@ -1587,6 +1587,8 @@ export default function App() {
   // ── INICIO ──────────────────────────────────────────────────────────────────
   const exportTimes = async () => {
     if (!drawn) return;
+
+    // Load html2canvas from CDN on demand
     if (!(window as any).html2canvas) {
       await new Promise<void>((resolve, reject) => {
         const s = document.createElement('script');
@@ -1596,21 +1598,36 @@ export default function App() {
         document.head.appendChild(s);
       });
     }
+
     const el = document.getElementById('times-semana-export');
-    if (!el) return;
+    if (!el) { alert('Elemento não encontrado'); return; }
+
+    // Expand all overflow:auto rows so html2canvas captures all cards
     const scrollRows = Array.from(el.querySelectorAll<HTMLElement>('[data-scroll-row]'));
-    const saved: { el: HTMLElement; overflow: string; width: string }[] = [];
+    const origStyles: { el: HTMLElement; overflow: string; width: string }[] = [];
     scrollRows.forEach((row) => {
-      saved.push({ el: row, overflow: row.style.overflow, width: row.style.width });
+      origStyles.push({ el: row, overflow: row.style.overflow, width: row.style.width });
       row.style.overflow = 'visible';
       row.style.width = 'max-content';
     });
-    const savedElOverflow = el.style.overflow;
+
+    // Also expand the outer container to full width
+    const origElOverflow = el.style.overflow;
+    const origElWidth = el.style.width;
     el.style.overflow = 'visible';
+    el.style.width = 'max-content';
+
     try {
       const canvas = await (window as any).html2canvas(el, {
-        backgroundColor: '#0a0a0a', scale: 2, useCORS: true, allowTaint: true, logging: false, scrollX: 0, scrollY: 0,
+        backgroundColor: '#0a0a0a',
+        scale: 2,
+        useCORS: true,
+        allowTaint: true,
+        logging: false,
+        scrollX: 0,
+        scrollY: 0,
       });
+
       canvas.toBlob((blob: Blob | null) => {
         if (!blob) return;
         const url = URL.createObjectURL(blob);
@@ -1623,8 +1640,13 @@ export default function App() {
     } catch (err) {
       alert('Erro ao exportar: ' + (err as Error).message);
     } finally {
-      saved.forEach(({ el: row, overflow, width }) => { row.style.overflow = overflow; row.style.width = width; });
-      el.style.overflow = savedElOverflow;
+      // Restore styles
+      origStyles.forEach(({ el: row, overflow, width }) => {
+        row.style.overflow = overflow;
+        row.style.width = width;
+      });
+      el.style.overflow = origElOverflow;
+      el.style.width = origElWidth;
     }
   };
 
@@ -1825,7 +1847,10 @@ export default function App() {
                               </div>
                             )}
                           </div>
-                          {/* Name below card removed — name already visible on card */}
+                          {/* Name below card */}
+                          <span style={{ fontSize: 10, fontWeight: 700, color: p.isPending ? '#555' : cfg.color, textAlign: 'center', lineHeight: 1.2, maxWidth: 80, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {firstName}
+                          </span>
                         </div>
                       );
                     })}

@@ -1757,8 +1757,8 @@ export default function App() {
 
     // Let layout reflow
     await new Promise(r => setTimeout(r, 50));
-    // Exact width: 5 cards (80px) + 4 gaps (6px) + row padding (28px) + outer padding (16px)
-    const fullWidth = 5 * 80 + 4 * 6 + 28 + 16 + 4; // 476px
+    // 5 cards (80px) + 4 gaps (6px) + inner padding (28px each side) + outer margin (16px each side)
+    const fullWidth = 5 * 80 + 4 * 6 + 28 * 2 + 16 * 2; // 520px
 
     try {
       const canvas = await (window as any).html2canvas(el, {

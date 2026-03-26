@@ -1813,28 +1813,75 @@ export default function App() {
                       fontSize: 18,
                       color: cfg.color,
                       letterSpacing: 2,
-                      marginBottom: 8,
+                      marginBottom: 10,
                     }}
                   >
                     {cfg.emoji} TIME {cfg.label.toUpperCase()}
                   </div>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                    {drawn[k].map((p) => (
-                      <span
-                        key={p.id}
-                        style={{
-                          background: cfg.color + '1a',
-                          border: `1px solid ${cfg.color}44`,
-                          borderRadius: 8,
-                          padding: '4px 10px',
-                          fontSize: 13,
-                          fontWeight: 600,
-                          color: cfg.color,
-                        }}
-                      >
-                        {p.name}
-                      </span>
-                    ))}
+                  <div style={{ display: 'flex', gap: 6, overflowX: 'auto', paddingBottom: 4 }}>
+                    {drawn[k].map((p) => {
+                      const fullPlayer = players.find((pl) => pl.id === p.id);
+                      const cardUrl = fullPlayer?.cardUrl || p.cardUrl;
+                      const avg = Math.round(p.pendingAvg ?? (p.ata + p.def + p.vel + p.hab) / 4);
+                      const hasCard = !!cardUrl;
+                      return (
+                        <div
+                          key={p.id}
+                          onClick={() => hasCard && setCardModal(fullPlayer || p)}
+                          style={{
+                            flexShrink: 0,
+                            width: 80,
+                            cursor: hasCard ? 'pointer' : 'default',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'center',
+                            gap: 4,
+                          }}
+                        >
+                          {/* Card image or default */}
+                          <div style={{ position: 'relative', width: 80, height: 108 }}>
+                            {hasCard ? (
+                              <img
+                                src={cardUrl}
+                                alt={p.name}
+                                style={{
+                                  width: 80,
+                                  height: 108,
+                                  objectFit: 'cover',
+                                  objectPosition: 'top',
+                                  borderRadius: 8,
+                                  border: `2px solid ${cfg.color}88`,
+                                  display: 'block',
+                                }}
+                              />
+                            ) : (
+                              <div
+                                style={{
+                                  width: 80,
+                                  height: 108,
+                                  background: 'linear-gradient(160deg,#1c1c1c,#252525)',
+                                  border: `2px solid ${RANK_COLOR[p.ranking]}`,
+                                  borderRadius: 8,
+                                  display: 'flex',
+                                  flexDirection: 'column',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  gap: 2,
+                                }}
+                              >
+                                <span style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 13, color: RANK_COLOR[p.ranking] }}>{avg}</span>
+                                <span style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 22, color: '#eee', lineHeight: 1 }}>{p.isPending ? '?' : initials(p.name)}</span>
+                                <span style={{ background: RANK_COLOR[p.ranking], color: '#000', fontSize: 9, fontWeight: 900, padding: '1px 6px', borderRadius: 4, marginTop: 2 }}>{p.ranking}</span>
+                              </div>
+                            )}
+                          </div>
+                          {/* Name below card */}
+                          <span style={{ fontSize: 10, fontWeight: 700, color: p.isPending ? '#555' : cfg.color, textAlign: 'center', lineHeight: 1.2, maxWidth: 80, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {p.isPending ? 'Pendente' : p.name.split(' ')[0]}
+                          </span>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               )

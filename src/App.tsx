@@ -1716,98 +1716,51 @@ export default function App() {
   // ── INICIO ──────────────────────────────────────────────────────────────────
   const exportTimes = async () => {
     if (!drawn) return;
-    const CARD_W = 90, CARD_H = 126, GAP = 6, PAD = 16;
-    const HEADER_H = 70, TEAM_LABEL_H = 36, TEAM_PAD = 12;
-    const teamKeys = Object.keys(TEAMS_CFG);
-    const totalH = HEADER_H + teamKeys.length * (TEAM_LABEL_H + CARD_H + TEAM_PAD * 2 + GAP) + PAD;
-    const totalW = PAD * 2 + 5 * CARD_W + 4 * GAP;
-    const canvas = document.createElement('canvas');
-    const scale = 2;
-    canvas.width = totalW * scale;
-    canvas.height = totalH * scale;
-    const ctx = canvas.getContext('2d');
-    ctx.scale(scale, scale);
 
-    // Background
-    ctx.fillStyle = '#0a0a0a';
-    ctx.fillRect(0, 0, totalW, totalH);
-
-    // Header
-    ctx.fillStyle = '#111';
-    ctx.fillRect(0, 0, totalW, HEADER_H);
-    ctx.font = 'bold 13px Arial';
-    ctx.fillStyle = '#4ade80';
-    ctx.textAlign = 'center';
-    ctx.fillText('FOMINHAS LEAGUE', totalW / 2, 26);
-    ctx.font = 'bold 18px Arial';
-    ctx.fillText('TIMES DA SEMANA', totalW / 2, 52);
-
-    const RANK_COLORS = { A: '#f59e0b', B: '#f97316', C: '#3b82f6', D: '#6b7280', E: '#374151' };
-
-    const drawDefaultCard = (ctx, p, x, y, w, h) => {
-      const rc = RANK_COLORS[p.ranking] || '#555';
-      ctx.fillStyle = '#1c1c1c';
-      ctx.beginPath(); ctx.roundRect(x, y, w, h, 8); ctx.fill();
-      ctx.strokeStyle = rc; ctx.lineWidth = 2;
-      ctx.beginPath(); ctx.roundRect(x, y, w, h, 8); ctx.stroke();
-      ctx.font = 'bold 9px Arial'; ctx.fillStyle = rc; ctx.textAlign = 'center';
-      const avg = p.overall ?? avgOverall(p);
-      ctx.fillText(String(avg), x + w/2, y + 18);
-      ctx.font = 'bold 16px Arial'; ctx.fillStyle = '#fff';
-      ctx.fillText(p.name.trim().split(' ')[0].slice(0, 3).toUpperCase(), x + w/2, y + h/2 + 6);
-      ctx.font = 'bold 10px Arial'; ctx.fillStyle = '#000';
-      ctx.fillStyle = rc;
-      ctx.beginPath(); ctx.roundRect(x + w/2 - 10, y + h - 20, 20, 14, 3); ctx.fill();
-      ctx.fillStyle = '#000'; ctx.font = 'bold 9px Arial';
-      ctx.fillText(p.ranking, x + w/2, y + h - 10);
-    };
-
-    let teamY = HEADER_H + GAP;
-    for (const key of teamKeys) {
-      const cfg = TEAMS_CFG[key];
-      const teamPlayers = (drawn[key] || []);
-
-      // Team label bg
-      ctx.fillStyle = cfg.color + '22';
-      ctx.beginPath(); ctx.roundRect(PAD, teamY, totalW - PAD*2, TEAM_LABEL_H + CARD_H + TEAM_PAD, 10); ctx.fill();
-      ctx.strokeStyle = cfg.color + '55'; ctx.lineWidth = 1;
-      ctx.beginPath(); ctx.roundRect(PAD, teamY, totalW - PAD*2, TEAM_LABEL_H + CARD_H + TEAM_PAD, 10); ctx.stroke();
-
-      // Team name
-      ctx.font = 'bold 14px Arial'; ctx.fillStyle = cfg.color; ctx.textAlign = 'left';
-      ctx.fillText(cfg.emoji + ' ' + cfg.label.toUpperCase(), PAD + 12, teamY + 24);
-
-      // Cards row
-      const cardsY = teamY + TEAM_LABEL_H;
-      const loadPromises = teamPlayers.map((p, i) => {
-        return new Promise((resolve) => {
-          const cx = PAD + i * (CARD_W + GAP);
-          if (p.cardUrl) {
-            const img = new Image();
-            img.crossOrigin = 'anonymous';
-            img.onload = () => {
-              ctx.save();
-              ctx.beginPath(); ctx.roundRect(cx, cardsY, CARD_W, CARD_H, 8); ctx.clip();
-              ctx.drawImage(img, cx, cardsY, CARD_W, CARD_H);
-              ctx.restore();
-              resolve();
-            };
-            img.onerror = () => { drawDefaultCard(ctx, p, cx, cardsY, CARD_W, CARD_H); resolve(); };
-            img.src = p.cardUrl;
-          } else {
-            drawDefaultCard(ctx, p, cx, cardsY, CARD_W, CARD_H);
-            resolve();
-          }
-        });
+    if (!(window as any).html2canvas) {
+      await new Promise<void>((resolve, reject) => {
+        const s = document.createElement('script');
+        s.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
+        s.onload = () => resolve();
+        s.onerror = () => reject(new Error('Falha ao carregar html2canvas'));
+        document.head.appendChild(s);
       });
-      await Promise.all(loadPromises);
-      teamY += TEAM_LABEL_H + CARD_H + TEAM_PAD * 2;
     }
 
-    const link = document.createElement('a');
-    link.download = 'times-fominhas-' + new Date().toISOString().slice(0,10) + '.png';
-    link.href = canvas.toDataURL('image/png');
-    link.click();
+    const el = document.getElementById('times-semana-export');
+    if (!el) return;
+
+    // Expand overflow so all 5 cards are captured
+    const scrollRows = Array.from(el.querySelectorAll<HTMLElement>('[data-scroll-row]'));
+    const saved: { el: HTMLElement; overflow: string; width: string }[] = [];
+    scrollRows.forEach((row) => {
+      saved.push({ el: row, overflow: row.style.overflow, width: row.style.width });
+      row.style.overflow = 'visible';
+      row.style.width = 'max-content';
+    });
+    const savedElOverflow = el.style.overflow;
+    el.style.overflow = 'visible';
+
+    try {
+      const canvas = await (window as any).html2canvas(el, {
+        backgroundColor: '#0a0a0a', scale: 2, useCORS: true, allowTaint: true,
+        logging: false, scrollX: 0, scrollY: 0,
+      });
+      canvas.toBlob((blob: Blob | null) => {
+        if (!blob) return;
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.download = 'times-fominhas-' + new Date().toISOString().slice(0, 10) + '.png';
+        link.href = url;
+        link.click();
+        setTimeout(() => URL.revokeObjectURL(url), 5000);
+      }, 'image/png');
+    } catch (err) {
+      alert('Erro ao exportar: ' + (err as Error).message);
+    } finally {
+      saved.forEach(({ el: row, overflow, width }) => { row.style.overflow = overflow; row.style.width = width; });
+      el.style.overflow = savedElOverflow;
+    }
   };
 
   const TabInicio = () => (
@@ -1913,7 +1866,7 @@ export default function App() {
       </div>
 
       {drawn && (
-        <div>
+        <div id="times-semana-export" style={{ background: '#0a0a0a', borderRadius: 12 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
         <div className="stitle" style={{ margin: 0 }}>Times da Semana</div>
         <button
@@ -1947,7 +1900,7 @@ export default function App() {
                   >
                     {cfg.emoji} TIME {cfg.label.toUpperCase()}
                   </div>
-                  <div style={{ display: 'flex', gap: 6, overflowX: 'auto', paddingBottom: 4 }}>
+                  <div data-scroll-row="1" style={{ display: 'flex', gap: 6, overflowX: 'auto', paddingBottom: 4 }}>
                     {drawn[k].map((p) => {
                       const fullPlayer = players.find((pl) => pl.id === p.id);
                       const cardUrl = fullPlayer?.cardUrl || p.cardUrl;

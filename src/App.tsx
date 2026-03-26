@@ -1818,7 +1818,10 @@ export default function App() {
               }}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <span style={{ fontWeight: 700, fontSize: 15 }}>
+                <span
+                  style={{ fontWeight: 700, fontSize: 15, cursor: p.cardUrl ? 'pointer' : 'default', textDecoration: p.cardUrl ? 'underline dotted #555' : 'none' }}
+                  onClick={() => p.cardUrl && setCardModal(p)}
+                >
                   {p.name}
                 </span>
                 <span

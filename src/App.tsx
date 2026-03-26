@@ -1760,6 +1760,14 @@ export default function App() {
           }}
         >
           <div style={{ position: 'relative', flexShrink: 0 }}>
+            {p.cardUrl ? (
+              <img
+                src={p.cardUrl}
+                alt={p.name}
+                onClick={() => setCardModal(p)}
+                style={{ width: 52, height: 72, objectFit: 'cover', objectPosition: 'top', borderRadius: 8, cursor: 'pointer', border: `2px solid ${RANK_COLOR[p.ranking]}` }}
+              />
+            ) : (
             <div
               style={{
                 width: 52,
@@ -1774,27 +1782,14 @@ export default function App() {
                 justifyContent: 'center',
               }}
             >
-              <span
-                style={{
-                  fontFamily: "'Bebas Neue',sans-serif",
-                  fontSize: 11,
-                  color: RANK_COLOR[p.ranking],
-                  lineHeight: 1,
-                }}
-              >
+              <span style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 11, color: RANK_COLOR[p.ranking], lineHeight: 1 }}>
                 {avg}
               </span>
-              <span
-                style={{
-                  fontFamily: "'Bebas Neue',sans-serif",
-                  fontSize: 16,
-                  color: '#eee',
-                  lineHeight: 1,
-                }}
-              >
+              <span style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 16, color: '#eee', lineHeight: 1 }}>
                 {initials(p.name)}
               </span>
             </div>
+            )}
             <div
               style={{
                 position: 'absolute',
@@ -1823,11 +1818,8 @@ export default function App() {
               }}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <span
-                  style={{ fontWeight: 700, fontSize: 15, cursor: p.cardUrl ? 'pointer' : 'default' }}
-                  onClick={() => p.cardUrl && setCardModal(p)}
-                >
-                  {p.name}{p.cardUrl ? ' 🃏' : ''}
+                <span style={{ fontWeight: 700, fontSize: 15 }}>
+                  {p.name}
                 </span>
                 <span
                   style={{

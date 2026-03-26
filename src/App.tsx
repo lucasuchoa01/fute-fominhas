@@ -1602,6 +1602,21 @@ export default function App() {
     const el = document.getElementById('times-semana-export');
     if (!el) { alert('Elemento não encontrado'); return; }
 
+    // Expand all overflow:auto rows so html2canvas captures all cards
+    const scrollRows = Array.from(el.querySelectorAll<HTMLElement>('[data-scroll-row]'));
+    const origStyles: { el: HTMLElement; overflow: string; width: string }[] = [];
+    scrollRows.forEach((row) => {
+      origStyles.push({ el: row, overflow: row.style.overflow, width: row.style.width });
+      row.style.overflow = 'visible';
+      row.style.width = 'max-content';
+    });
+
+    // Also expand the outer container to full width
+    const origElOverflow = el.style.overflow;
+    const origElWidth = el.style.width;
+    el.style.overflow = 'visible';
+    el.style.width = 'max-content';
+
     try {
       const canvas = await (window as any).html2canvas(el, {
         backgroundColor: '#0a0a0a',
@@ -1611,7 +1626,6 @@ export default function App() {
         logging: false,
         scrollX: 0,
         scrollY: 0,
-        windowWidth: el.scrollWidth,
       });
 
       canvas.toBlob((blob: Blob | null) => {
@@ -1625,6 +1639,14 @@ export default function App() {
       }, 'image/png');
     } catch (err) {
       alert('Erro ao exportar: ' + (err as Error).message);
+    } finally {
+      // Restore styles
+      origStyles.forEach(({ el: row, overflow, width }) => {
+        row.style.overflow = overflow;
+        row.style.width = width;
+      });
+      el.style.overflow = origElOverflow;
+      el.style.width = origElWidth;
     }
   };
 
@@ -1765,7 +1787,7 @@ export default function App() {
                   >
                     {cfg.emoji} TIME {cfg.label.toUpperCase()}
                   </div>
-                  <div style={{ display: 'flex', gap: 6, overflowX: 'auto', paddingBottom: 4 }}>
+                  <div data-scroll-row="1" style={{ display: 'flex', gap: 6, overflowX: 'auto', paddingBottom: 4 }}>
                     {drawn[k].map((p) => {
                       const fullPlayer = players.find((pl) => pl.id === p.id);
                       const cardUrl = fullPlayer?.cardUrl || p.cardUrl;

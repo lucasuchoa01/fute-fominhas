@@ -1730,42 +1730,25 @@ export default function App() {
     const el = document.getElementById('times-semana-export');
     if (!el) return;
 
-    // Expand all overflow:auto rows so html2canvas captures all cards
+    // Only expand the scroll rows — keep parent containers intact
     const scrollRows = Array.from(el.querySelectorAll<HTMLElement>('[data-scroll-row]'));
     const saved: { el: HTMLElement; overflow: string; width: string; maxWidth: string }[] = [];
-
-    // Also expand parent chain up to body to remove width constraints
-    const parents: { el: HTMLElement; overflow: string; maxWidth: string }[] = [];
-    let parent = el.parentElement;
-    while (parent && parent !== document.body) {
-      parents.push({ el: parent, overflow: parent.style.overflow, maxWidth: parent.style.maxWidth });
-      parent.style.overflow = 'visible';
-      parent.style.maxWidth = 'none';
-      parent = parent.parentElement;
-    }
-
     scrollRows.forEach((row) => {
       saved.push({ el: row, overflow: row.style.overflow, width: row.style.width, maxWidth: row.style.maxWidth });
       row.style.overflow = 'visible';
       row.style.width = 'max-content';
       row.style.maxWidth = 'none';
     });
-    const savedElOverflow = el.style.overflow;
-    const savedElMaxWidth = el.style.maxWidth;
-    el.style.overflow = 'visible';
-    el.style.maxWidth = 'none';
 
-    // Let layout reflow
-    await new Promise(r => setTimeout(r, 50));
-    // 5 cards (80px) + 4 gaps (6px) + inner padding (28px each side) + outer margin (16px each side)
-    const fullWidth = 5 * 80 + 4 * 6 + 28 * 2 + 16 * 2; // 520px
+    await new Promise(r => setTimeout(r, 80));
+    const captureWidth = el.offsetWidth;
 
     try {
       const canvas = await (window as any).html2canvas(el, {
         backgroundColor: '#0a0a0a', scale: 2, useCORS: true, allowTaint: true,
         logging: false, scrollX: 0, scrollY: 0,
-        width: fullWidth,
-        windowWidth: fullWidth,
+        width: captureWidth,
+        windowWidth: captureWidth,
       });
       canvas.toBlob((blob: Blob | null) => {
         if (!blob) return;
@@ -1780,9 +1763,6 @@ export default function App() {
       alert('Erro ao exportar: ' + (err as Error).message);
     } finally {
       saved.forEach(({ el: row, overflow, width, maxWidth }) => { row.style.overflow = overflow; row.style.width = width; row.style.maxWidth = maxWidth; });
-      el.style.overflow = savedElOverflow;
-      el.style.maxWidth = savedElMaxWidth;
-      parents.forEach(({ el: p, overflow, maxWidth }) => { p.style.overflow = overflow; p.style.maxWidth = maxWidth; });
     }
   };
 
@@ -1935,7 +1915,7 @@ export default function App() {
                           onClick={() => hasCard && setCardModal(fullPlayer || p)}
                           style={{
                             flexShrink: 0,
-                            width: 80,
+                            width: 72,
                             cursor: hasCard ? 'pointer' : 'default',
                             display: 'flex',
                             flexDirection: 'column',
@@ -1944,14 +1924,14 @@ export default function App() {
                           }}
                         >
                           {/* Card image or default */}
-                          <div style={{ position: 'relative', width: 80, height: 108 }}>
+                          <div style={{ position: 'relative', width: 72, height: 100 }}>
                             {hasCard ? (
                               <img
                                 src={cardUrl}
                                 alt={p.name}
                                 style={{
-                                  width: 80,
-                                  height: 108,
+                                  width: 72,
+                                  height: 100,
                                   objectFit: 'cover',
                                   objectPosition: 'top',
                                   borderRadius: 8,
@@ -1962,8 +1942,8 @@ export default function App() {
                             ) : (
                               <div
                                 style={{
-                                  width: 80,
-                                  height: 108,
+                                  width: 72,
+                                  height: 100,
                                   background: 'linear-gradient(160deg,#1c1c1c,#252525)',
                                   border: `2px solid ${RANK_COLOR[p.ranking]}`,
                                   borderRadius: 8,
@@ -1981,7 +1961,7 @@ export default function App() {
                             )}
                           </div>
                           {/* Name below card */}
-                          <span style={{ fontSize: 10, fontWeight: 700, color: p.isPending ? '#555' : cfg.color, textAlign: 'center', lineHeight: 1.2, maxWidth: 80, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          <span style={{ fontSize: 10, fontWeight: 700, color: p.isPending ? '#555' : cfg.color, textAlign: 'center', lineHeight: 1.2, maxWidth: 72, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                             {p.isPending ? 'Pendente' : p.name.split(' ')[0]}
                           </span>
                         </div>

@@ -1730,17 +1730,28 @@ export default function App() {
     const el = document.getElementById('times-semana-export');
     if (!el) return;
 
-    // Only expand the scroll rows — keep parent containers intact
-    const scrollRows = Array.from(el.querySelectorAll<HTMLElement>('[data-scroll-row]'));
-    const saved: { el: HTMLElement; overflow: string; width: string; maxWidth: string }[] = [];
-    scrollRows.forEach((row) => {
-      saved.push({ el: row, overflow: row.style.overflow, width: row.style.width, maxWidth: row.style.maxWidth });
-      row.style.overflow = 'visible';
-      row.style.width = 'max-content';
-      row.style.maxWidth = 'none';
+    // Expand ALL elements inside that could clip content
+    const allEls = Array.from(el.querySelectorAll<HTMLElement>('*'));
+    const savedStyles: { el: HTMLElement; overflow: string; maxWidth: string }[] = [];
+    allEls.forEach((child) => {
+      const style = window.getComputedStyle(child);
+      if (style.overflow !== 'visible' || style.maxWidth !== 'none') {
+        savedStyles.push({ el: child, overflow: child.style.overflow, maxWidth: child.style.maxWidth });
+        child.style.overflow = 'visible';
+        child.style.maxWidth = 'none';
+      }
     });
+    // Also expand scroll rows to full width
+    const scrollRows = Array.from(el.querySelectorAll<HTMLElement>('[data-scroll-row]'));
+    const savedRows: { el: HTMLElement; width: string }[] = [];
+    scrollRows.forEach((row) => {
+      savedRows.push({ el: row, width: row.style.width });
+      row.style.width = 'max-content';
+    });
+    const savedOverflow = el.style.overflow;
+    el.style.overflow = 'visible';
 
-    await new Promise(r => setTimeout(r, 80));
+    await new Promise(r => setTimeout(r, 100));
 
     try {
       const canvas = await (window as any).html2canvas(el, {
@@ -1759,7 +1770,9 @@ export default function App() {
     } catch (err) {
       alert('Erro ao exportar: ' + (err as Error).message);
     } finally {
-      saved.forEach(({ el: row, overflow, width, maxWidth }) => { row.style.overflow = overflow; row.style.width = width; row.style.maxWidth = maxWidth; });
+      savedStyles.forEach(({ el: child, overflow, maxWidth }) => { child.style.overflow = overflow; child.style.maxWidth = maxWidth; });
+      savedRows.forEach(({ el: row, width }) => { row.style.width = width; });
+      el.style.overflow = savedOverflow;
     }
   };
 

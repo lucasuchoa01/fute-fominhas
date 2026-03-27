@@ -1717,63 +1717,127 @@ export default function App() {
   const exportTimes = async () => {
     if (!drawn) return;
 
-    if (!(window as any).html2canvas) {
-      await new Promise<void>((resolve, reject) => {
-        const s = document.createElement('script');
-        s.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
-        s.onload = () => resolve();
-        s.onerror = () => reject(new Error('Falha ao carregar html2canvas'));
-        document.head.appendChild(s);
-      });
+    const CARD_W = 100, CARD_H = 136, GAP = 8, PAD = 16;
+    const HEADER_H = 70, TEAM_LABEL_H = 36, TEAM_PAD = 14, NAME_H = 20;
+    const teamKeys = Object.keys(TEAMS_CFG);
+    const totalW = PAD * 2 + 5 * CARD_W + 4 * GAP;
+    const totalH = HEADER_H + teamKeys.length * (TEAM_LABEL_H + CARD_H + NAME_H + TEAM_PAD * 2 + GAP) + PAD;
+
+    const canvas = document.createElement('canvas');
+    const scale = 2;
+    canvas.width = totalW * scale;
+    canvas.height = totalH * scale;
+    const ctx = canvas.getContext('2d')!;
+    ctx.scale(scale, scale);
+
+    const RANK_COLORS: Record<string, string> = { A: '#f59e0b', B: '#f97316', C: '#3b82f6', D: '#6b7280', E: '#374151' };
+
+    // Background
+    ctx.fillStyle = '#0a0a0a';
+    ctx.fillRect(0, 0, totalW, totalH);
+
+    // Header
+    ctx.fillStyle = '#111';
+    ctx.fillRect(0, 0, totalW, HEADER_H);
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#4ade80';
+    ctx.font = 'bold 13px Arial';
+    ctx.fillText('FOMINHAS LEAGUE', totalW / 2, 28);
+    ctx.font = 'bold 20px Arial';
+    ctx.fillText('TIMES DA SEMANA', totalW / 2, 54);
+
+    const drawDefaultCard = (p: any, x: number, y: number) => {
+      const fp = players.find((pl: any) => pl.id === p.id) || p;
+      const rc = RANK_COLORS[fp.ranking] || '#555';
+      const avg = fp.overall ?? avgOverall(fp);
+      const firstName = fp.isPending ? '?' : fp.name.trim().split(' ')[0].toUpperCase();
+      const fontSize = Math.min(18, Math.max(9, Math.floor(80 / (firstName.length * 0.6))));
+
+      ctx.fillStyle = '#1c1c1c';
+      ctx.beginPath(); ctx.roundRect(x, y, CARD_W, CARD_H, 8); ctx.fill();
+      ctx.strokeStyle = rc; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.roundRect(x, y, CARD_W, CARD_H, 8); ctx.stroke();
+
+      ctx.textAlign = 'center';
+      ctx.fillStyle = rc; ctx.font = 'bold 11px Arial';
+      ctx.fillText(String(avg), x + CARD_W / 2, y + 18);
+
+      ctx.fillStyle = '#fff'; ctx.font = `bold ${fontSize}px Arial`;
+      ctx.fillText(firstName, x + CARD_W / 2, y + CARD_H / 2 + 6);
+
+      ctx.fillStyle = rc;
+      ctx.beginPath(); ctx.roundRect(x + CARD_W / 2 - 12, y + CARD_H - 22, 24, 16, 4); ctx.fill();
+      ctx.fillStyle = '#000'; ctx.font = 'bold 10px Arial';
+      ctx.fillText(fp.ranking, x + CARD_W / 2, y + CARD_H - 11);
+    };
+
+    const loadImage = (url: string): Promise<HTMLImageElement | null> =>
+      fetch(url)
+        .then(r => r.blob())
+        .then(blob => new Promise<HTMLImageElement>((res, rej) => {
+          const img = new Image();
+          const u = URL.createObjectURL(blob);
+          img.onload = () => { URL.revokeObjectURL(u); res(img); };
+          img.onerror = () => { URL.revokeObjectURL(u); rej(); };
+          img.src = u;
+        }))
+        .catch(() => null);
+
+    let teamY = HEADER_H + GAP;
+
+    for (const key of teamKeys) {
+      const cfg = TEAMS_CFG[key];
+      const teamPlayers = drawn[key] || [];
+      const blockH = TEAM_LABEL_H + CARD_H + NAME_H + TEAM_PAD;
+
+      ctx.fillStyle = cfg.color + '22';
+      ctx.beginPath(); ctx.roundRect(PAD, teamY, totalW - PAD * 2, blockH, 10); ctx.fill();
+      ctx.strokeStyle = cfg.color + '55'; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.roundRect(PAD, teamY, totalW - PAD * 2, blockH, 10); ctx.stroke();
+
+      ctx.font = 'bold 15px Arial'; ctx.fillStyle = cfg.color; ctx.textAlign = 'left';
+      ctx.fillText(cfg.emoji + ' ' + cfg.label.toUpperCase(), PAD + 12, teamY + 26);
+
+      const cardsY = teamY + TEAM_LABEL_H;
+
+      await Promise.all(teamPlayers.map(async (p: any, i: number) => {
+        const fp = players.find((pl: any) => pl.id === p.id) || p;
+        const cx = PAD + i * (CARD_W + GAP);
+        const cardUrl = fp.cardUrl || p.cardUrl;
+
+        if (cardUrl) {
+          const img = await loadImage(cardUrl);
+          if (img) {
+            ctx.save();
+            ctx.beginPath(); ctx.roundRect(cx, cardsY, CARD_W, CARD_H, 8); ctx.clip();
+            ctx.drawImage(img, cx, cardsY, CARD_W, CARD_H);
+            ctx.restore();
+          } else {
+            drawDefaultCard(p, cx, cardsY);
+          }
+        } else {
+          drawDefaultCard(p, cx, cardsY);
+        }
+
+        // Name below card
+        const name = fp.isPending ? 'Pendente' : fp.name.trim().split(' ')[0];
+        ctx.fillStyle = fp.isPending ? '#555' : cfg.color;
+        ctx.font = 'bold 10px Arial'; ctx.textAlign = 'center';
+        ctx.fillText(name, cx + CARD_W / 2, cardsY + CARD_H + 14);
+      }));
+
+      teamY += blockH + GAP;
     }
 
-    const el = document.getElementById('times-semana-export');
-    if (!el) return;
-
-    // Expand ALL elements inside that could clip content
-    const allEls = Array.from(el.querySelectorAll<HTMLElement>('*'));
-    const savedStyles: { el: HTMLElement; overflow: string; maxWidth: string }[] = [];
-    allEls.forEach((child) => {
-      const style = window.getComputedStyle(child);
-      if (style.overflow !== 'visible' || style.maxWidth !== 'none') {
-        savedStyles.push({ el: child, overflow: child.style.overflow, maxWidth: child.style.maxWidth });
-        child.style.overflow = 'visible';
-        child.style.maxWidth = 'none';
-      }
-    });
-    // Also expand scroll rows to full width
-    const scrollRows = Array.from(el.querySelectorAll<HTMLElement>('[data-scroll-row]'));
-    const savedRows: { el: HTMLElement; width: string }[] = [];
-    scrollRows.forEach((row) => {
-      savedRows.push({ el: row, width: row.style.width });
-      row.style.width = 'max-content';
-    });
-    const savedOverflow = el.style.overflow;
-    el.style.overflow = 'visible';
-
-    await new Promise(r => setTimeout(r, 100));
-
-    try {
-      const canvas = await (window as any).html2canvas(el, {
-        backgroundColor: '#0a0a0a', scale: 2, useCORS: true, allowTaint: true,
-        logging: false, scrollX: 0, scrollY: 0,
-      });
-      canvas.toBlob((blob: Blob | null) => {
-        if (!blob) return;
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.download = 'times-fominhas-' + new Date().toISOString().slice(0, 10) + '.png';
-        link.href = url;
-        link.click();
-        setTimeout(() => URL.revokeObjectURL(url), 5000);
-      }, 'image/png');
-    } catch (err) {
-      alert('Erro ao exportar: ' + (err as Error).message);
-    } finally {
-      savedStyles.forEach(({ el: child, overflow, maxWidth }) => { child.style.overflow = overflow; child.style.maxWidth = maxWidth; });
-      savedRows.forEach(({ el: row, width }) => { row.style.width = width; });
-      el.style.overflow = savedOverflow;
-    }
+    canvas.toBlob((blob) => {
+      if (!blob) return;
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.download = 'times-fominhas-' + new Date().toISOString().slice(0, 10) + '.png';
+      link.href = url;
+      link.click();
+      setTimeout(() => URL.revokeObjectURL(url), 5000);
+    }, 'image/png');
   };
 
   const TabInicio = () => (

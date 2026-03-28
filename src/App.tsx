@@ -2145,9 +2145,20 @@ export default function App() {
                       color: cfg.color,
                       letterSpacing: 2,
                       marginBottom: 10,
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
                     }}
                   >
-                    {cfg.emoji} TIME {cfg.label.toUpperCase()}
+                    <span>{cfg.emoji} TIME {cfg.label.toUpperCase()}</span>
+                    <span style={{ fontSize: 14, opacity: 0.85 }}>
+                      {Math.round(
+                        drawn[k].reduce((s, p) => {
+                          const fp = players.find(pl => pl.id === p.id) || p;
+                          return s + (fp.overall ?? p.pendingAvg ?? avgOverall(fp));
+                        }, 0) / drawn[k].length
+                      )} OVR
+                    </span>
                   </div>
                   <div data-scroll-row="1" style={{ display: 'flex', gap: 6, overflowX: 'auto', paddingBottom: 4 }}>
                     {drawn[k].map((p) => {

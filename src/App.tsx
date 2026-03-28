@@ -1296,6 +1296,35 @@ function ModalEdit({ editP, setEditP, setShowEdt, players, updatePlayers }) {
           </div>
         )}
 
+        {/* Tags */}
+        <div style={{ marginBottom: 10 }}>
+          <label className="lbl">TAGS</label>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
+            {(editP.tags || []).map((tag: string, i: number) => (
+              <span key={i} style={{ display: 'flex', alignItems: 'center', gap: 4, background: '#1a1a2e', border: '1px solid #2a2a5a', borderRadius: 20, padding: '3px 10px', fontSize: 12, color: '#818cf8', fontWeight: 600 }}>
+                {tag}
+                <button onClick={() => set('tags', (editP.tags || []).filter((_: string, j: number) => j !== i))}
+                  style={{ background: 'none', border: 'none', color: '#555', cursor: 'pointer', fontSize: 14, lineHeight: 1, padding: 0, marginLeft: 2 }}>×</button>
+              </span>
+            ))}
+            {(editP.tags || []).length === 0 && <span style={{ fontSize: 12, color: '#333', fontStyle: 'italic' }}>Nenhuma tag</span>}
+          </div>
+          <input
+            className="inp"
+            style={{ marginBottom: 0 }}
+            placeholder="Digite e pressione Enter"
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                const val = (e.target as HTMLInputElement).value.trim();
+                if (val && !(editP.tags || []).includes(val)) {
+                  set('tags', [...(editP.tags || []), val]);
+                }
+                (e.target as HTMLInputElement).value = '';
+              }
+            }}
+          />
+        </div>
+
         <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
           <button
             className="btn2"
@@ -2260,6 +2289,16 @@ export default function App() {
                 )}
               </div>
             </div>
+            {/* Tags */}
+            {(p.tags || []).length > 0 && (
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 8 }}>
+                {(p.tags || []).map((tag: string, i: number) => (
+                  <span key={i} style={{ background: '#1a1a2e', border: '1px solid #2a2a5a', borderRadius: 20, padding: '2px 9px', fontSize: 10, color: '#818cf8', fontWeight: 700 }}>
+                    {tag}
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       );

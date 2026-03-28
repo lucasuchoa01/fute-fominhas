@@ -1401,6 +1401,7 @@ export default function App() {
   const [appliedMatch, setAppliedMatch] = useState(null);
   const [matchHistory, setMatchHistory] = useState([]);
   const [showHistory, setShowHistory] = useState(false);
+  const [champTeamPhoto, setChampTeamPhoto] = useState<string | null>(null);
   const [cardModal, setCardModal] = useState(null);
 
   // Load storage
@@ -1434,6 +1435,8 @@ export default function App() {
         if (lr) setLastResetAt(lr);
         const cm = load('fm_appliedMatch');
         if (cm) setAppliedMatch(cm);
+        const ctp = data['fm_champTeamPhoto'];
+        if (ctp) setChampTeamPhoto(ctp);
         const cs = load('fm_caixaSubTab');
         if (cs) setCaixaSubTab(cs);
         const mh = load('fm_matchHistory');
@@ -1727,10 +1730,11 @@ export default function App() {
     if (!confirm('Zerar a semana?\n\nLista, sorteio e placares serao apagados.\nA Tabela Geral NAO sera afetada.')) return;
     const freshLista = { date: new Date().toISOString().split('T')[0], slots: [], ausentes: [] };
     setDrawn(null); setRounds(INIT_ROUNDS); setFinale(INIT_FINAL);
-    setScorers({}); setLista(freshLista); setAppliedMatch(null);
+    setScorers({}); setLista(freshLista); setAppliedMatch(null); setChampTeamPhoto(null);
     await save('fm_drawn', null); await save('fm_rounds', INIT_ROUNDS);
     await save('fm_finale', INIT_FINAL); await save('fm_scorers', {});
     await save('fm_lista', freshLista); await save('fm_appliedMatch', null);
+    const ref2 = doc(db, 'app', 'state'); await setDoc(ref2, { fm_champTeamPhoto: null }, { merge: true });
   };
 
   const preserveContentScroll = (updater) => {
@@ -1896,7 +1900,104 @@ export default function App() {
         <Countdown />
       </div>
 
-      {/* Quick stats */}
+      {/* Foto do time campeão - banner full width */}
+      {currentChampionTeam && (
+        <div
+          className="card"
+          style={{
+            padding: 0,
+            overflow: 'hidden',
+            marginBottom: 10,
+            position: 'relative',
+            background: TEAMS_CFG[currentChampionTeam].color + '14',
+            border: `1px solid ${TEAMS_CFG[currentChampionTeam].color}44`,
+          }}
+        >
+          {champTeamPhoto ? (
+            <div style={{ position: 'relative' }}>
+              <img
+                src={champTeamPhoto}
+                alt="Time Campeão"
+                style={{ width: '100%', maxHeight: 220, objectFit: 'cover', objectPosition: 'center top', display: 'block' }}
+              />
+              <div style={{
+                position: 'absolute', bottom: 0, left: 0, right: 0,
+                background: 'linear-gradient(transparent, rgba(0,0,0,0.85))',
+                padding: '24px 14px 12px',
+              }}>
+                <div style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 22, color: TEAMS_CFG[currentChampionTeam].color, letterSpacing: 2 }}>
+                  🏆 {TEAMS_CFG[currentChampionTeam].label.toUpperCase()}
+                </div>
+                <div style={{ fontSize: 10, color: '#aaa', letterSpacing: 1 }}>CAMPEÃO DA SEMANA</div>
+              </div>
+              {isAdmin && (
+                <button
+                  onClick={() => {
+                    const ref2 = doc(db, 'app', 'state');
+                    setChampTeamPhoto(null);
+                    setDoc(ref2, { fm_champTeamPhoto: null }, { merge: true });
+                  }}
+                  style={{ position: 'absolute', top: 8, right: 8, background: '#1a0a0a', border: '1px solid #ef4444', color: '#ef4444', borderRadius: 6, padding: '3px 8px', fontSize: 11, cursor: 'pointer' }}
+                >✕</button>
+              )}
+            </div>
+          ) : (
+            <div style={{ padding: 14 }}>
+              <div style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 22, color: TEAMS_CFG[currentChampionTeam].color, letterSpacing: 2, marginBottom: 4 }}>
+                🏆 {TEAMS_CFG[currentChampionTeam].label.toUpperCase()}
+              </div>
+              <div style={{ fontSize: 10, color: '#555', letterSpacing: 1, marginBottom: 10 }}>CAMPEÃO DA SEMANA</div>
+              {drawn && (
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: isAdmin ? 12 : 0 }}>
+                  {(drawn[currentChampionTeam] || []).filter(p => !p.isPending).map(p => (
+                    <span key={p.id} style={{ fontSize: 9, fontWeight: 700, color: TEAMS_CFG[currentChampionTeam].color, background: TEAMS_CFG[currentChampionTeam].color + '1a', border: `1px solid ${TEAMS_CFG[currentChampionTeam].color}33`, borderRadius: 4, padding: '1px 5px' }}>
+                      {p.name}
+                    </span>
+                  ))}
+                </div>
+              )}
+              {isAdmin && (
+                <label style={{ display: 'block', background: '#161616', border: '1px solid #2a5a2a', borderRadius: 9, padding: '9px 16px', textAlign: 'center', color: '#4ade80', fontSize: 12, fontWeight: 700, cursor: 'pointer', letterSpacing: 0.5 }}>
+                  📸 ENVIAR FOTO DO TIME
+                  <input type="file" accept="image/*" style={{ display: 'none' }} onChange={async (e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    try {
+                      const storageRef = ref(storage, `champ_photos/${Date.now()}`);
+                      await uploadBytes(storageRef, file);
+                      const url = await getDownloadURL(storageRef);
+                      setChampTeamPhoto(url);
+                      const ref2 = doc(db, 'app', 'state');
+                      await setDoc(ref2, { fm_champTeamPhoto: url }, { merge: true });
+                    } catch (err: any) { alert('Erro: ' + err.message); }
+                  }} />
+                </label>
+              )}
+            </div>
+          )}
+          {champTeamPhoto && isAdmin && (
+            <div style={{ padding: '10px 14px' }}>
+              <label style={{ display: 'block', background: '#161616', border: '1px solid #2a5a2a', borderRadius: 9, padding: '8px 16px', textAlign: 'center', color: '#4ade80', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>
+                🔄 TROCAR FOTO
+                <input type="file" accept="image/*" style={{ display: 'none' }} onChange={async (e) => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+                  try {
+                    const storageRef = ref(storage, `champ_photos/${Date.now()}`);
+                    await uploadBytes(storageRef, file);
+                    const url = await getDownloadURL(storageRef);
+                    setChampTeamPhoto(url);
+                    const ref2 = doc(db, 'app', 'state');
+                    await setDoc(ref2, { fm_champTeamPhoto: url }, { merge: true });
+                  } catch (err: any) { alert('Erro: ' + err.message); }
+                }} />
+              </label>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Quick stats grid */}
       <div
         style={{
           display: 'grid',
@@ -1905,24 +2006,6 @@ export default function App() {
           marginBottom: 16,
         }}
       >
-        {/* Card Campeão */}
-        <div className="card" style={{ textAlign: 'center', padding: 14 }}>
-          <div style={{ fontSize: 22 }}>🏆</div>
-          <div style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 24, color: currentChampionTeam ? TEAMS_CFG[currentChampionTeam].color : '#4ade80', margin: '4px 0' }}>
-            {currentChampionTeam ? TEAMS_CFG[currentChampionTeam].label : '—'}
-          </div>
-          <div style={{ fontSize: 10, color: '#555', letterSpacing: 1 }}>CAMPEÃO DA SEMANA</div>
-          {currentChampionTeam && drawn && (
-            <div style={{ marginTop: 8, display: 'flex', flexWrap: 'wrap', gap: 3, justifyContent: 'center' }}>
-              {(drawn[currentChampionTeam] || []).filter(p => !p.isPending).map(p => (
-                <span key={p.id} style={{ fontSize: 9, fontWeight: 700, color: TEAMS_CFG[currentChampionTeam].color, background: TEAMS_CFG[currentChampionTeam].color + '1a', border: `1px solid ${TEAMS_CFG[currentChampionTeam].color}33`, borderRadius: 4, padding: '1px 5px' }}>
-                  {p.name}
-                </span>
-              ))}
-            </div>
-          )}
-        </div>
-
         {/* Card Pikinha da Noite */}
         <div className="card" style={{ textAlign: 'center', padding: 14 }}>
           {currentTopScorer?.cardUrl ? (

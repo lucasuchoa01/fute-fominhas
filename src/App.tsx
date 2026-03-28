@@ -1887,7 +1887,7 @@ export default function App() {
         style={{
           display: 'flex',
           alignItems: 'center',
-          gap: 12,
+          gap: 4,
           borderRadius: 16,
           marginBottom: 16,
           overflow: 'hidden',
@@ -1895,19 +1895,19 @@ export default function App() {
           background: 'linear-gradient(135deg,#0a1f0a,#162e16)',
         }}
       >
-        {/* Logo quadrado */}
+        {/* Logo */}
         <img
           src="https://firebasestorage.googleapis.com/v0/b/fominhas-league.firebasestorage.app/o/ChatGPT%20Image%2028%20de%20mar.%20de%202026%2C%2012_49_00.png?alt=media&token=af95c5c4-8e3a-4c12-88ab-632241979db7"
           alt="Logo"
-          style={{ width: 90, height: 90, objectFit: 'contain', flexShrink: 0, margin: 8 }}
+          style={{ width: 120, height: 120, objectFit: 'contain', flexShrink: 0, margin: '6px 0 6px 6px' }}
         />
-        {/* Countdown à direita */}
-        <div style={{ flex: 1, textAlign: 'center', padding: '12px 12px 12px 0' }}>
+        {/* Countdown */}
+        <div style={{ flex: 1, textAlign: 'center', paddingRight: 10 }}>
           <div
             style={{
               fontFamily: "'Bebas Neue',sans-serif",
               fontSize: 11,
-              letterSpacing: 2,
+              letterSpacing: 3,
               color: '#4ade80',
               marginBottom: 8,
               whiteSpace: 'nowrap',

@@ -1899,10 +1899,10 @@ export default function App() {
         <img
           src="https://firebasestorage.googleapis.com/v0/b/fominhas-league.firebasestorage.app/o/ChatGPT%20Image%2028%20de%20mar.%20de%202026%2C%2012_49_00.png?alt=media&token=af95c5c4-8e3a-4c12-88ab-632241979db7"
           alt="Logo"
-          style={{ width: 110, height: 110, objectFit: 'contain', flexShrink: 0, margin: 8 }}
+          style={{ width: 90, height: 90, objectFit: 'contain', flexShrink: 0, margin: 8 }}
         />
         {/* Countdown à direita */}
-        <div style={{ flex: 1, textAlign: 'center', padding: '12px 16px 12px 0' }}>
+        <div style={{ flex: 1, textAlign: 'center', padding: '12px 12px 12px 0' }}>
           <div
             style={{
               fontFamily: "'Bebas Neue',sans-serif",
@@ -1913,7 +1913,7 @@ export default function App() {
               whiteSpace: 'nowrap',
             }}
           >
-            ⚽ PRÓXIMO JOGO — SEG 22H
+            ⚽ PRÓXIMO JOGO — SEGUNDA 22H
           </div>
           <Countdown />
         </div>

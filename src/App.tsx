@@ -1902,7 +1902,7 @@ export default function App() {
           style={{ width: 110, height: 110, objectFit: 'contain', flexShrink: 0, margin: 8 }}
         />
         {/* Countdown à direita */}
-        <div style={{ flex: 1, textAlign: 'center', paddingRight: 12 }}>
+        <div style={{ flex: 1, textAlign: 'center', padding: '12px 16px 12px 0' }}>
           <div
             style={{
               fontFamily: "'Bebas Neue',sans-serif",

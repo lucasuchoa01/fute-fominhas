@@ -671,7 +671,7 @@ function Countdown() {
           <span
             style={{
               fontFamily: "'Bebas Neue',sans-serif",
-              fontSize: 44,
+              fontSize: 34,
               lineHeight: 1,
               color: '#4ade80',
             }}

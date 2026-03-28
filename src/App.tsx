@@ -1588,6 +1588,13 @@ export default function App() {
     return sorted[0];
   })();
 
+  const bolaDeOuro = (() => {
+    const mensalistas = players.filter(p => (p.tipo || 'mensalista') === 'mensalista');
+    if (!mensalistas.length) return null;
+    const sorted = [...mensalistas].sort((a, b) => b.goals - a.goals);
+    return sorted[0]?.goals > 0 ? sorted[0] : null;
+  })();
+
   const currentChampionTeam = (() => {
     const a = parseInt(finale.sA, 10);
     const b = parseInt(finale.sB, 10);
@@ -1928,7 +1935,16 @@ export default function App() {
                 <div style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 22, color: TEAMS_CFG[currentChampionTeam].color, letterSpacing: 2 }}>
                   🏆 {TEAMS_CFG[currentChampionTeam].label.toUpperCase()}
                 </div>
-                <div style={{ fontSize: 10, color: '#aaa', letterSpacing: 1 }}>CAMPEÃO DA SEMANA</div>
+                <div style={{ fontSize: 10, color: '#aaa', letterSpacing: 1, marginBottom: 4 }}>CAMPEÃO DA SEMANA</div>
+                {drawn && (
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                    {(drawn[currentChampionTeam] || []).filter(p => !p.isPending).map(p => (
+                      <span key={p.id} style={{ fontSize: 9, fontWeight: 700, color: TEAMS_CFG[currentChampionTeam].color, background: 'rgba(0,0,0,0.5)', border: `1px solid ${TEAMS_CFG[currentChampionTeam].color}66`, borderRadius: 4, padding: '1px 5px' }}>
+                        {p.name.trim().split(' ')[0]}
+                      </span>
+                    ))}
+                  </div>
+                )}
               </div>
               {isAdmin && (
                 <button
@@ -2027,7 +2043,13 @@ export default function App() {
 
         {/* Card Líder da Tabela */}
         <div className="card" style={{ textAlign: 'center', padding: 14 }}>
-          <div style={{ fontSize: 22 }}>🥇</div>
+          {liderTabela?.cardUrl ? (
+            <img src={liderTabela.cardUrl} alt={liderTabela.name}
+              onClick={() => setCardModal(liderTabela)}
+              style={{ width: '100%', maxHeight: 160, objectFit: 'contain', objectPosition: 'top', borderRadius: 8, cursor: 'pointer', marginBottom: 6 }} />
+          ) : (
+            <div style={{ fontSize: 22 }}>🥇</div>
+          )}
           <div style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: liderTabela && liderTabela.name.length > 10 ? 16 : 24, color: '#f59e0b', margin: '4px 0', lineHeight: 1.1 }}>
             {liderTabela ? liderTabela.name : '—'}
           </div>
@@ -2041,7 +2063,13 @@ export default function App() {
 
         {/* Card Bola Murcha */}
         <div className="card" style={{ textAlign: 'center', padding: 14 }}>
-          <div style={{ fontSize: 22 }}>😵</div>
+          {bolaMurcha?.cardUrl ? (
+            <img src={bolaMurcha.cardUrl} alt={bolaMurcha.name}
+              onClick={() => setCardModal(bolaMurcha)}
+              style={{ width: '100%', maxHeight: 160, objectFit: 'contain', objectPosition: 'top', borderRadius: 8, cursor: 'pointer', marginBottom: 6 }} />
+          ) : (
+            <div style={{ fontSize: 22 }}>😵</div>
+          )}
           <div style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: bolaMurcha && bolaMurcha.name.length > 10 ? 16 : 24, color: '#ef4444', margin: '4px 0', lineHeight: 1.1 }}>
             {bolaMurcha ? bolaMurcha.name : '—'}
           </div>
@@ -2051,6 +2079,26 @@ export default function App() {
             </div>
           )}
           <div style={{ fontSize: 10, color: '#555', letterSpacing: 1 }}>BOLA MURCHA</div>
+        </div>
+
+        {/* Card Bola de Ouro */}
+        <div className="card" style={{ textAlign: 'center', padding: 14 }}>
+          {bolaDeOuro?.cardUrl ? (
+            <img src={bolaDeOuro.cardUrl} alt={bolaDeOuro.name}
+              onClick={() => setCardModal(bolaDeOuro)}
+              style={{ width: '100%', maxHeight: 160, objectFit: 'contain', objectPosition: 'top', borderRadius: 8, cursor: 'pointer', marginBottom: 6 }} />
+          ) : (
+            <div style={{ fontSize: 22 }}>🎯</div>
+          )}
+          <div style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: bolaDeOuro && bolaDeOuro.name.length > 10 ? 16 : 24, color: '#fbbf24', margin: '4px 0', lineHeight: 1.1 }}>
+            {bolaDeOuro ? bolaDeOuro.name : '—'}
+          </div>
+          {bolaDeOuro && (
+            <div style={{ fontSize: 11, color: '#fbbf24', fontWeight: 700, marginBottom: 2 }}>
+              {bolaDeOuro.goals} ⚽ no total
+            </div>
+          )}
+          <div style={{ fontSize: 10, color: '#555', letterSpacing: 1 }}>BOLA DE OURO</div>
         </div>
       </div>
 

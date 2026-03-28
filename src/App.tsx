@@ -29,6 +29,13 @@ const TEAMS_CFG = {
   verde: { label: 'Máquina Verde', color: '#22c55e', dim: '#052e16', emoji: '🦖' },
 };
 
+const RANK_BORDER_COLOR: Record<string, string> = {
+  A: '#f59e0b',
+  B: '#94a3b8',
+  C: '#cd7c4b',
+  D: '#374151',
+  E: '#6b7280',
+};
 const RANK_COLOR = {
   A: '#f59e0b',
   B: '#f97316',
@@ -2192,7 +2199,7 @@ export default function App() {
                                   objectFit: 'cover',
                                   objectPosition: 'top',
                                   borderRadius: 8,
-                                  border: `2px solid ${cfg.color}88`,
+                                  border: `2px solid ${RANK_BORDER_COLOR[fullPlayer?.ranking || p.ranking] || cfg.color}`,
                                   display: 'block',
                                 }}
                               />

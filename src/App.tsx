@@ -3795,27 +3795,36 @@ export default function App() {
         (a, b) => b.champ - a.champ || b.vice - a.vice || b.goals - a.goals || b.pres - a.pres
       );
 
-    const downloadImage = () => {
+    const downloadImage = async () => {
       const scale = 2;
-      const W = 440, rowH = 44, headerH = 52, titleH = 56, footerH = 32;
-      const totalH = titleH + headerH + rowH * sorted.length + footerH;
+      const W = 440, rowH = 44, headerH = 52, bannerH = 147, footerH = 32;
+      const totalH = bannerH + headerH + rowH * sorted.length + footerH;
       const canvas = document.createElement('canvas');
       canvas.width = W * scale; canvas.height = totalH * scale;
       const ctx = canvas.getContext('2d');
       ctx.scale(scale, scale);
       ctx.fillStyle = '#0a0a0a'; ctx.fillRect(0, 0, W, totalH);
-      ctx.fillStyle = '#111'; ctx.fillRect(0, 0, W, titleH);
-      ctx.font = 'bold 11px Arial'; ctx.fillStyle = '#4ade80'; ctx.textAlign = 'center';
-      ctx.fillText('FOMINHAS LEAGUE', W / 2, 22);
-      ctx.font = 'bold 18px Arial'; ctx.fillText('TABELA GERAL', W / 2, 44);
-      ctx.fillStyle = '#1a1a1a'; ctx.fillRect(0, titleH, W, headerH);
+      // Draw banner image
+      try {
+        const res = await fetch('https://firebasestorage.googleapis.com/v0/b/fominhas-league.firebasestorage.app/o/FOMINHA%20LEAGUE%20BANNER.png?alt=media&token=91c084b6-2698-41a3-bcbf-f195daf5cd9c');
+        const blob = await res.blob();
+        const blobUrl = URL.createObjectURL(blob);
+        await new Promise<void>((resolve) => {
+          const img = new Image();
+          img.onload = () => { ctx.drawImage(img, 0, 0, W, bannerH); URL.revokeObjectURL(blobUrl); resolve(); };
+          img.onerror = () => resolve();
+          img.src = blobUrl;
+        });
+      } catch {}
+      const titleH = bannerH;
+      ctx.fillStyle = '#1a1a1a'; ctx.fillRect(0, bannerH, W, headerH);
       ctx.font = 'bold 10px Arial'; ctx.fillStyle = '#555';
       [{ l:'#', x:28, c:'center' },{ l:'NOME', x:80, c:'left' },{ l:'🏆', x:257, c:'center' },{ l:'🥈', x:307, c:'center' },{ l:'⚽', x:357, c:'center' },{ l:'✅', x:407, c:'center' }]
-        .forEach(col => { ctx.textAlign = col.c; ctx.fillText(col.l, col.x, titleH + headerH/2 + 4); });
+        .forEach(col => { ctx.textAlign = col.c; ctx.fillText(col.l, col.x, bannerH + headerH/2 + 4); });
       const rC = { A:'#f59e0b', B:'#f97316', C:'#3b82f6', D:'#6b7280', E:'#374151' };
       const pC = ['#f59e0b','#94a3b8','#cd7c4b'];
       sorted.forEach((p, i) => {
-        const y = titleH + headerH + rowH * i;
+        const y = bannerH + headerH + rowH * i;
         ctx.fillStyle = i % 2 === 0 ? '#111' : '#141414'; ctx.fillRect(0, y, W, rowH);
         ctx.fillStyle = '#1f1f1f'; ctx.fillRect(0, y+rowH-1, W, 1);
         const cy = y + rowH/2 + 5;
@@ -3831,7 +3840,7 @@ export default function App() {
           ctx.textAlign = 'center'; ctx.fillText(String(v), [257,307,357,407][si], cy);
         });
       });
-      const fy = titleH + headerH + rowH * sorted.length;
+      const fy = bannerH + headerH + rowH * sorted.length;
       ctx.fillStyle = '#111'; ctx.fillRect(0, fy, W, footerH);
       ctx.font = '10px Arial'; ctx.fillStyle = '#333'; ctx.textAlign = 'center';
       ctx.fillText('Gerado em ' + new Date().toLocaleDateString('pt-BR') + ' · Depois das Dez FS', W/2, fy+20);
@@ -3845,9 +3854,9 @@ export default function App() {
         {/* Banner da Liga */}
         <div style={{ borderRadius: 12, overflow: 'hidden', marginBottom: 12 }}>
           <img
-            src="https://firebasestorage.googleapis.com/v0/b/fominhas-league.firebasestorage.app/o/FOMINHAS%20LEAGUE%20(1).png?alt=media&token=6b619984-4154-47ac-b68d-cee268b77dc8"
+            src="https://firebasestorage.googleapis.com/v0/b/fominhas-league.firebasestorage.app/o/FOMINHA%20LEAGUE%20BANNER.png?alt=media&token=91c084b6-2698-41a3-bcbf-f195daf5cd9c"
             alt="Futfominhas League"
-            style={{ width: '100%', display: 'block', objectFit: 'cover' }}
+            style={{ width: '100%', maxHeight: 140, display: 'block', objectFit: 'cover', objectPosition: 'center' }}
           />
         </div>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>

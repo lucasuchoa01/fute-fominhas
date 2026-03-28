@@ -1907,13 +1907,13 @@ export default function App() {
             style={{
               fontFamily: "'Bebas Neue',sans-serif",
               fontSize: 11,
-              letterSpacing: 3,
+              letterSpacing: 2,
               color: '#4ade80',
               marginBottom: 8,
               whiteSpace: 'nowrap',
             }}
           >
-            ⚽ PRÓXIMO JOGO — SEGUNDA 22H
+            ⚽ PRÓXIMO JOGO — SEG 22H
           </div>
           <Countdown />
         </div>

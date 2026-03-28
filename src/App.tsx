@@ -3842,6 +3842,14 @@ export default function App() {
 
     return (
       <div>
+        {/* Logo da Liga */}
+        <div style={{ textAlign: 'center', marginBottom: 8 }}>
+          <img
+            src="https://firebasestorage.googleapis.com/v0/b/fominhas-league.firebasestorage.app/o/LIGA%20FUTFOMINHAS%20-%20AGRESSIVO-Photoroom.png?alt=media&token=5005284c-2463-40a4-ac65-a293dd2a7d06"
+            alt="Liga Futfominhas"
+            style={{ width: 100, height: 100, objectFit: 'contain' }}
+          />
+        </div>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
           <div className="stitle" style={{ margin: 0 }}>TABELA GERAL</div>
           <button onClick={downloadImage} style={{ background: '#141414', border: '1px solid #2a2a2a', borderRadius: 8, padding: '7px 14px', color: '#4ade80', fontSize: 12, cursor: 'pointer', fontFamily: "'Barlow',sans-serif", fontWeight: 700 }}>

@@ -2208,8 +2208,8 @@ export default function App() {
                                 style={{
                                   width: 72,
                                   height: 100,
-                                  background: 'linear-gradient(160deg,#1c1c1c,#252525)',
-                                  border: `2px solid ${RANK_COLOR[p.ranking]}`,
+                                  background: `linear-gradient(160deg,#1a1a1a,${(RANK_BORDER_COLOR[p.ranking] || '#252525')}22)`,
+                                  border: `2px solid ${RANK_BORDER_COLOR[p.ranking] || RANK_COLOR[p.ranking]}`,
                                   borderRadius: 8,
                                   display: 'flex',
                                   flexDirection: 'column',
@@ -2218,14 +2218,14 @@ export default function App() {
                                   gap: 2,
                                 }}
                               >
-                                <span style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 13, color: RANK_COLOR[p.ranking] }}>{avg}</span>
+                                <span style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 13, color: RANK_BORDER_COLOR[p.ranking] || RANK_COLOR[p.ranking] }}>{avg}</span>
                                 <span style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 22, color: '#eee', lineHeight: 1 }}>{p.isPending ? '?' : initials(p.name)}</span>
-                                <span style={{ background: RANK_COLOR[p.ranking], color: '#000', fontSize: 9, fontWeight: 900, padding: '1px 6px', borderRadius: 4, marginTop: 2 }}>{p.ranking}</span>
+                                <span style={{ background: RANK_BORDER_COLOR[p.ranking] || RANK_COLOR[p.ranking], color: '#000', fontSize: 9, fontWeight: 900, padding: '1px 6px', borderRadius: 4, marginTop: 2 }}>{p.ranking}</span>
                               </div>
                             )}
                           </div>
                           {/* Name below card */}
-                          <span style={{ fontSize: 10, fontWeight: 700, color: p.isPending ? '#555' : cfg.color, textAlign: 'center', lineHeight: 1.2, maxWidth: 72, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          <span style={{ fontSize: 10, fontWeight: 700, color: p.isPending ? '#555' : (RANK_BORDER_COLOR[fullPlayer?.ranking || p.ranking] || cfg.color), textAlign: 'center', lineHeight: 1.2, maxWidth: 72, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                             {p.isPending ? 'Pendente' : p.name.split(' ')[0]}
                           </span>
                         </div>

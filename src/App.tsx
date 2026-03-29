@@ -2192,7 +2192,7 @@ export default function App() {
                   >
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                       {cfg.shield && (
-                        <img src={cfg.shield} alt={cfg.label} style={{ width: 52, height: 52, objectFit: 'contain' }} />
+                        <img src={cfg.shield} alt={cfg.label} style={{ width: 70, height: 70, objectFit: 'contain' }} />
                       )}
                       <span>TIME {cfg.label.toUpperCase()}</span>
                     </div>

@@ -2181,28 +2181,25 @@ export default function App() {
                   <div
                     style={{
                       display: 'flex',
-                      flexDirection: 'column',
-                      alignItems: 'flex-start',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
                       marginBottom: 10,
-                      gap: 4,
                     }}
                   >
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', width: '100%' }}>
-                      {cfg.shield && (
-                        <img src={cfg.shield} alt={cfg.label} style={{ width: 70, height: 70, objectFit: 'contain' }} />
-                      )}
-                      <div style={{ textAlign: 'right' }}>
-                        <div style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 18, color: cfg.color, letterSpacing: 2 }}>
-                          TIME {cfg.label.toUpperCase()}
-                        </div>
-                        <div style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 14, color: cfg.color, opacity: 0.8 }}>
-                          {Math.round(
-                            drawn[k].reduce((s, p) => {
-                              const fp = players.find(pl => pl.id === p.id) || p;
-                              return s + (fp.overall ?? p.pendingAvg ?? avgOverall(fp));
-                            }, 0) / drawn[k].length
-                          )} OVR
-                        </div>
+                    {cfg.shield && (
+                      <img src={cfg.shield} alt={cfg.label} style={{ width: 70, height: 70, objectFit: 'contain', flexShrink: 0 }} />
+                    )}
+                    <div style={{ flex: 1, textAlign: 'center' }}>
+                      <div style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 18, color: cfg.color, letterSpacing: 2 }}>
+                        TIME {cfg.label.toUpperCase()}
+                      </div>
+                      <div style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 13, color: cfg.color, opacity: 0.8 }}>
+                        {Math.round(
+                          drawn[k].reduce((s, p) => {
+                            const fp = players.find(pl => pl.id === p.id) || p;
+                            return s + (fp.overall ?? p.pendingAvg ?? avgOverall(fp));
+                          }, 0) / drawn[k].length
+                        )} OVR
                       </div>
                     </div>
                   </div>

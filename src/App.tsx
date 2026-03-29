@@ -25,7 +25,7 @@ const TEAMS_CFG = {
     color: '#ef4444',
     dim: '#450a0a',
     emoji: '👹',
-    shield: 'https://firebasestorage.googleapis.com/v0/b/fominhas-league.firebasestorage.app/o/diabos%20vermelhos.png?alt=media&token=595e64f3-93e9-4d46-bc00-1754fccd0934',
+    shield: 'https://firebasestorage.googleapis.com/v0/b/fominhas-league.firebasestorage.app/o/diabos%20vermelhos.png?alt=media&token=133c7c82-0407-4626-8850-8259c289bf0d',
   },
   azul: {
     label: 'Azulões',
@@ -1869,8 +1869,8 @@ export default function App() {
       if (cfg.shield) {
         const shieldImg = await loadImage(cfg.shield);
         if (shieldImg) {
-          ctx.drawImage(shieldImg, PAD + 8, teamY + 4, 28, 28);
-          ctx.fillText(cfg.label.toUpperCase(), PAD + 44, teamY + 26);
+          ctx.drawImage(shieldImg, PAD + 4, teamY + 2, 50, 50);
+          ctx.fillText(cfg.label.toUpperCase(), PAD + 60, teamY + 26);
         } else {
           ctx.fillText(cfg.emoji + ' ' + cfg.label.toUpperCase(), PAD + 12, teamY + 26);
         }

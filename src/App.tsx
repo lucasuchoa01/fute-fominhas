@@ -65,7 +65,7 @@ const RANK_COLOR = {
   E: '#374151',
 };
 const RANK_VAL = { A: 5, B: 4, C: 3, D: 2, E: 1 };
-const TEAM_SIZE = 5;
+let TEAM_SIZE = 5;
 
 const INITIAL_PLAYERS = [
   {
@@ -1426,11 +1426,15 @@ export default function App() {
   const [confirmDesfazer, setConfirmDesfazer] = useState(false);
   const [lastResetAt, setLastResetAt] = useState('');
   const [caixaSubTab, setCaixaSubTab] = useState('pagamentos');
+  const [teamSize, setTeamSize] = useState(5);
   const [appliedMatch, setAppliedMatch] = useState(null);
   const [matchHistory, setMatchHistory] = useState([]);
   const [showHistory, setShowHistory] = useState(false);
   const [champTeamPhoto, setChampTeamPhoto] = useState<string | null>(null);
   const [cardModal, setCardModal] = useState(null);
+
+  // Sync TEAM_SIZE global with state
+  TEAM_SIZE = teamSize;
 
   // Load storage
   useEffect(() => {
@@ -1467,6 +1471,8 @@ export default function App() {
         if (ctp) setChampTeamPhoto(ctp);
         const cs = load('fm_caixaSubTab');
         if (cs) setCaixaSubTab(cs);
+        const ts = load('fm_teamSize');
+        if (ts) { setTeamSize(ts); TEAM_SIZE = ts; }
         const mh = load('fm_matchHistory');
         if (mh) {
           // Dedup by date, keep first occurrence (most recent save)
@@ -4105,6 +4111,39 @@ export default function App() {
     return (
       <div>
         <div className="stitle">GESTÃO</div>
+
+        {/* Tamanho do time */}
+        {isAdmin && (
+          <div className="card" style={{ marginBottom: 12 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                <div style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 14, color: '#4ade80', letterSpacing: 1 }}>JOGADORES POR TIME</div>
+                <div style={{ fontSize: 11, color: '#555', marginTop: 2 }}>Padrão: 5 · Hoje: {teamSize}</div>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <button
+                  onClick={() => {
+                    const v = Math.max(3, teamSize - 1);
+                    setTeamSize(v);
+                    TEAM_SIZE = v;
+                    save('fm_teamSize', v);
+                  }}
+                  style={{ width: 32, height: 32, borderRadius: 8, background: '#1a1a1a', border: '1px solid #333', color: '#fff', fontSize: 18, cursor: 'pointer', fontWeight: 700 }}
+                >−</button>
+                <span style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 28, color: '#4ade80', minWidth: 24, textAlign: 'center' }}>{teamSize}</span>
+                <button
+                  onClick={() => {
+                    const v = Math.min(8, teamSize + 1);
+                    setTeamSize(v);
+                    TEAM_SIZE = v;
+                    save('fm_teamSize', v);
+                  }}
+                  style={{ width: 32, height: 32, borderRadius: 8, background: '#1a1a1a', border: '1px solid #333', color: '#fff', fontSize: 18, cursor: 'pointer', fontWeight: 700 }}
+                >+</button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {!isAdmin && (
           <div

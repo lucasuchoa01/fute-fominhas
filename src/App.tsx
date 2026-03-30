@@ -1791,10 +1791,10 @@ export default function App() {
   const exportTimes = async () => {
     if (!drawn) return;
 
-    const CARD_W = 100, CARD_H = 136, GAP = 8, PAD = 16;
+    const CARD_W = teamSize <= 5 ? 100 : 72, CARD_H = teamSize <= 5 ? 136 : 100, GAP = teamSize <= 5 ? 8 : 6, PAD = 16;
     const HEADER_H = 70, TEAM_LABEL_H = 36, TEAM_PAD = 14, NAME_H = 20;
     const teamKeys = Object.keys(TEAMS_CFG);
-    const totalW = PAD * 2 + 5 * CARD_W + 4 * GAP;
+    const totalW = PAD * 2 + teamSize * CARD_W + (teamSize - 1) * GAP;
     const totalH = HEADER_H + teamKeys.length * (TEAM_LABEL_H + CARD_H + NAME_H + TEAM_PAD * 2 + GAP) + PAD;
 
     const canvas = document.createElement('canvas');
@@ -1825,7 +1825,8 @@ export default function App() {
       const rc = RANK_COLORS[fp.ranking] || '#555';
       const avg = fp.overall ?? avgOverall(fp);
       const firstName = fp.isPending ? '?' : fp.name.trim().split(' ')[0].toUpperCase();
-      const fontSize = Math.min(18, Math.max(9, Math.floor(80 / (firstName.length * 0.6))));
+      const maxFontSize = CARD_W <= 72 ? 13 : 18;
+      const fontSize = Math.min(maxFontSize, Math.max(7, Math.floor((CARD_W - 8) / (firstName.length * 0.6))));
 
       ctx.fillStyle = '#1c1c1c';
       ctx.beginPath(); ctx.roundRect(x, y, CARD_W, CARD_H, 8); ctx.fill();
@@ -1870,19 +1871,7 @@ export default function App() {
       ctx.beginPath(); ctx.roundRect(PAD, teamY, totalW - PAD * 2, blockH, 10); ctx.stroke();
 
       ctx.font = 'bold 15px Arial'; ctx.fillStyle = cfg.color; ctx.textAlign = 'left';
-
-      // Draw shield if available
-      if (cfg.shield) {
-        const shieldImg = await loadImage(cfg.shield);
-        if (shieldImg) {
-          ctx.drawImage(shieldImg, PAD + 4, teamY + 2, 50, 50);
-          ctx.fillText(cfg.label.toUpperCase(), PAD + 60, teamY + 26);
-        } else {
-          ctx.fillText(cfg.emoji + ' ' + cfg.label.toUpperCase(), PAD + 12, teamY + 26);
-        }
-      } else {
-        ctx.fillText(cfg.emoji + ' ' + cfg.label.toUpperCase(), PAD + 12, teamY + 26);
-      }
+      ctx.fillText(cfg.emoji + ' ' + cfg.label.toUpperCase(), PAD + 12, teamY + 26);
 
       const cardsY = teamY + TEAM_LABEL_H;
 
@@ -2258,7 +2247,7 @@ export default function App() {
                                 }}
                               >
                                 <span style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 13, color: RANK_BORDER_COLOR[p.ranking] || RANK_COLOR[p.ranking] }}>{avg}</span>
-                                <span style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 22, color: '#eee', lineHeight: 1 }}>{p.isPending ? '?' : initials(p.name)}</span>
+                                <span style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: Math.min(18, Math.max(9, Math.floor(60 / ((p.isPending ? 1 : p.name.trim().split(' ')[0].length) * 0.6)))), color: '#eee', lineHeight: 1, textAlign: 'center' }}>{p.isPending ? '?' : p.name.trim().split(' ')[0].toUpperCase()}</span>
                                 <span style={{ background: RANK_BORDER_COLOR[p.ranking] || RANK_COLOR[p.ranking], color: '#000', fontSize: 9, fontWeight: 900, padding: '1px 6px', borderRadius: 4, marginTop: 2 }}>{p.ranking}</span>
                               </div>
                             )}

@@ -25,10 +25,29 @@ const TEAMS_CFG = {
     color: '#ef4444',
     dim: '#450a0a',
     emoji: '👹',
+    shield: 'https://firebasestorage.googleapis.com/v0/b/fominhas-league.firebasestorage.app/o/diabos%20vermelhos.png?alt=media&token=133c7c82-0407-4626-8850-8259c289bf0d',
   },
-  azul: { label: 'Azulões', color: '#3b82f6', dim: '#1e3a8a', emoji: '💎' },
-  amarelo: { label: 'Canarinhos', color: '#eab308', dim: '#422006', emoji: '🐤' },
-  verde: { label: 'Máquina Verde', color: '#22c55e', dim: '#052e16', emoji: '🦖' },
+  azul: {
+    label: 'Azulões',
+    color: '#3b82f6',
+    dim: '#1e3a8a',
+    emoji: '💎',
+    shield: 'https://firebasestorage.googleapis.com/v0/b/fominhas-league.firebasestorage.app/o/azul%C3%B5es.png?alt=media&token=f6165ac4-01e3-4036-a716-e58e79459e7e',
+  },
+  amarelo: {
+    label: 'Canarinhos',
+    color: '#eab308',
+    dim: '#422006',
+    emoji: '🐤',
+    shield: 'https://firebasestorage.googleapis.com/v0/b/fominhas-league.firebasestorage.app/o/canarinhos.png?alt=media&token=632be39d-a732-45a5-96a9-4920b5cf0427',
+  },
+  verde: {
+    label: 'Máquina Verde',
+    color: '#22c55e',
+    dim: '#052e16',
+    emoji: '🦖',
+    shield: 'https://firebasestorage.googleapis.com/v0/b/fominhas-league.firebasestorage.app/o/maquina%20verde.png?alt=media&token=df9161d1-1824-4662-84f4-4cc34897d8c3',
+  },
 };
 
 const RANK_BORDER_COLOR: Record<string, string> = {
@@ -1739,8 +1758,8 @@ export default function App() {
 
   const resetSemana = async () => {
     const hoje = new Date().getDay();
-    if (hoje !== 6) {
-      alert('A nova semana só pode ser iniciada no Sábado! 📅');
+    if (hoje !== 6 && hoje !== 0 && hoje !== 1) {
+      alert('A nova semana só pode ser iniciada a partir do Sábado! 📅');
       return;
     }
     if (!confirm('Zerar a semana?\n\nLista, sorteio e placares serao apagados.\nA Tabela Geral NAO sera afetada.')) return;
@@ -1845,7 +1864,19 @@ export default function App() {
       ctx.beginPath(); ctx.roundRect(PAD, teamY, totalW - PAD * 2, blockH, 10); ctx.stroke();
 
       ctx.font = 'bold 15px Arial'; ctx.fillStyle = cfg.color; ctx.textAlign = 'left';
-      ctx.fillText(cfg.emoji + ' ' + cfg.label.toUpperCase(), PAD + 12, teamY + 26);
+
+      // Draw shield if available
+      if (cfg.shield) {
+        const shieldImg = await loadImage(cfg.shield);
+        if (shieldImg) {
+          ctx.drawImage(shieldImg, PAD + 4, teamY + 2, 50, 50);
+          ctx.fillText(cfg.label.toUpperCase(), PAD + 60, teamY + 26);
+        } else {
+          ctx.fillText(cfg.emoji + ' ' + cfg.label.toUpperCase(), PAD + 12, teamY + 26);
+        }
+      } else {
+        ctx.fillText(cfg.emoji + ' ' + cfg.label.toUpperCase(), PAD + 12, teamY + 26);
+      }
 
       const cardsY = teamY + TEAM_LABEL_H;
 
@@ -2149,25 +2180,28 @@ export default function App() {
                 >
                   <div
                     style={{
-                      fontFamily: "'Bebas Neue',sans-serif",
-                      fontSize: 18,
-                      color: cfg.color,
-                      letterSpacing: 2,
-                      marginBottom: 10,
                       display: 'flex',
-                      justifyContent: 'space-between',
                       alignItems: 'center',
+                      justifyContent: 'space-between',
+                      marginBottom: 10,
                     }}
                   >
-                    <span>{cfg.emoji} TIME {cfg.label.toUpperCase()}</span>
-                    <span style={{ fontSize: 14, opacity: 0.85 }}>
-                      {Math.round(
-                        drawn[k].reduce((s, p) => {
-                          const fp = players.find(pl => pl.id === p.id) || p;
-                          return s + (fp.overall ?? p.pendingAvg ?? avgOverall(fp));
-                        }, 0) / drawn[k].length
-                      )} OVR
-                    </span>
+                    {cfg.shield && (
+                      <img src={cfg.shield} alt={cfg.label} style={{ width: 70, height: 70, objectFit: 'contain', flexShrink: 0 }} />
+                    )}
+                    <div style={{ flex: 1, textAlign: 'center' }}>
+                      <div style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 18, color: cfg.color, letterSpacing: 2 }}>
+                        TIME {cfg.label.toUpperCase()}
+                      </div>
+                      <div style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 13, color: cfg.color, opacity: 0.8 }}>
+                        {Math.round(
+                          drawn[k].reduce((s, p) => {
+                            const fp = players.find(pl => pl.id === p.id) || p;
+                            return s + (fp.overall ?? p.pendingAvg ?? avgOverall(fp));
+                          }, 0) / drawn[k].length
+                        )} OVR
+                      </div>
+                    </div>
                   </div>
                   <div data-scroll-row="1" style={{ display: 'flex', gap: 6, overflowX: 'auto', paddingBottom: 4 }}>
                     {drawn[k].map((p) => {

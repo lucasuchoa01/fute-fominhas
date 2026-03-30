@@ -1873,6 +1873,14 @@ export default function App() {
       ctx.font = 'bold 15px Arial'; ctx.fillStyle = cfg.color; ctx.textAlign = 'left';
       ctx.fillText(cfg.emoji + ' ' + cfg.label.toUpperCase(), PAD + 12, teamY + 26);
 
+      // Team OVR
+      const teamOvr = Math.round(teamPlayers.reduce((s, p) => {
+        const fp = players.find((pl: any) => pl.id === p.id) || p;
+        return s + (fp.overall ?? p.pendingAvg ?? avgOverall(fp));
+      }, 0) / (teamPlayers.length || 1));
+      ctx.font = 'bold 13px Arial'; ctx.fillStyle = cfg.color + 'cc'; ctx.textAlign = 'right';
+      ctx.fillText(teamOvr + ' OVR', totalW - PAD - 8, teamY + 26);
+
       const cardsY = teamY + TEAM_LABEL_H;
 
       await Promise.all(teamPlayers.map(async (p: any, i: number) => {

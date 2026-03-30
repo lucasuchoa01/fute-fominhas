@@ -1555,7 +1555,7 @@ export default function App() {
 
   const addPlayerToLista = (player) => {
     setLista((prev) => {
-      if (prev.slots.length >= 20) return prev;
+      if (prev.slots.length >= teamSize * 4) return prev;
       if (
         prev.slots.find(
           (s) => normalizeName(s.name) === normalizeName(player.name)
@@ -2606,8 +2606,8 @@ export default function App() {
       .filter(Boolean);
 
     const doShuffle = () => {
-      if (naLista.length < 4) {
-        alert('Adicione pelo menos 4 jogadores na Lista antes de sortear!');
+      if (naLista.length < TEAM_SIZE) {
+        alert(`Adicione pelo menos ${TEAM_SIZE} jogadores na Lista antes de sortear!`);
         return;
       }
       const t = drawTeams(naLista);
@@ -4682,7 +4682,7 @@ export default function App() {
 
   // ── LISTA ─────────────────────────────────────────────────────────────────────
   const TabLista = () => {
-    const totalField = 20;
+    const totalField = teamSize * 4;
 
     const fmtDateBR = (iso) => {
       if (!iso) return '';
@@ -4710,7 +4710,7 @@ export default function App() {
       const name = (avulsoRef.current?.value || avulsoName).trim();
       if (!name) return;
       if (lista.slots.length >= totalField) {
-        alert('A lista já atingiu o limite de 20 jogadores.');
+        alert(`A lista já atingiu o limite de ${teamSize * 4} jogadores.`);
         return;
       }
       if (
@@ -4741,7 +4741,7 @@ export default function App() {
 
     const addMensalPresente = (p) => {
       if (lista.slots.length >= totalField) {
-        alert('A lista já atingiu o limite de 20 jogadores.');
+        alert(`A lista já atingiu o limite de ${teamSize * 4} jogadores.`);
         return;
       }
       if (

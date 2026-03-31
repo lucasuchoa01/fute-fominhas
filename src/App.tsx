@@ -582,6 +582,15 @@ function getNextGameDate() {
   return next;
 }
 
+function getLastMondayISO(baseDate = new Date()) {
+  const date = new Date(baseDate);
+  date.setHours(12, 0, 0, 0);
+  const day = date.getDay(); // 0 = domingo, 1 = segunda
+  const diff = day === 0 ? 6 : day - 1;
+  date.setDate(date.getDate() - diff);
+  return date.toISOString().split('T')[0];
+}
+
 function initials(name) {
   return name.trim().split(' ')[0].slice(0, 3).toUpperCase();
 }
@@ -1412,7 +1421,8 @@ export default function App() {
     onAdded: null,
   });
   const [lista, setLista] = useState({
-    date: new Date().toISOString().split('T')[0],
+    date: getLastMondayISO(),
+    rodada: '1',
     slots: [],
     ausentes: [],
   });
@@ -1464,7 +1474,13 @@ export default function App() {
         const co = load('fm_coletes');
         if (co) setColetes(co);
         const li = load('fm_lista');
-        if (li) setLista(li);
+        if (li) setLista({
+          date: getLastMondayISO(),
+          rodada: '1',
+          slots: [],
+          ausentes: [],
+          ...li,
+        });
         const lr = load('fm_lastReset');
         if (lr) setLastResetAt(lr);
         const cm = load('fm_appliedMatch');
@@ -1753,6 +1769,7 @@ export default function App() {
     const entry = {
       id: Date.now(),
       date: lista.date,
+      roundNumber: Number(lista.rodada || matchHistory.length + 1),
       champTeam,
       champPlayers,
       topScorer,
@@ -1780,7 +1797,12 @@ export default function App() {
       return;
     }
     if (!confirm('Zerar a semana?\n\nLista, sorteio e placares serao apagados.\nA Tabela Geral NAO sera afetada.')) return;
-    const freshLista = { date: new Date().toISOString().split('T')[0], slots: [], ausentes: [] };
+    const freshLista = {
+      date: getLastMondayISO(),
+      rodada: String(matchHistory.length + 1),
+      slots: [],
+      ausentes: [],
+    };
     setDrawn(null); setRounds(INIT_ROUNDS); setFinale(INIT_FINAL);
     setScorers({}); setLista(freshLista); setAppliedMatch(null); setChampTeamPhoto(null);
     await save('fm_drawn', null); await save('fm_rounds', INIT_ROUNDS);
@@ -1934,9 +1956,19 @@ export default function App() {
     }, 'image/png');
   };
 
+  const updateMatchHistoryDate = async (id, newDate) => {
+    if (!newDate) return;
+    const updated = matchHistory.map((item) =>
+      item.id === id ? { ...item, date: newDate } : item
+    );
+    setMatchHistory(updated);
+    persist('fm_match_history', updated);
+  };
+
   const exportResumo = async () => {
     const W = 480, PAD = 20, scale = 2;
     const standings = calcStandings(rounds);
+    const currentRoundLabel = lista?.rodada || String(matchHistory.length + 1);
     const formatDateBR = (iso?: string) => {
       if (!iso) return '';
       const [y, m, d] = iso.split('-');
@@ -1984,6 +2016,7 @@ export default function App() {
     ctx.fillStyle = '#4ade80'; ctx.font = 'bold 11px Arial'; ctx.fillText('FOMINHAS LEAGUE', W / 2, 18);
     ctx.fillStyle = '#fff'; ctx.font = 'bold 19px Arial'; ctx.fillText('RESUMO DA RODADA', W / 2, 40);
     ctx.fillStyle = '#888'; ctx.font = '12px Arial'; ctx.fillText(`Data: ${formatDateBR(lista?.date)}`, W / 2, 58);
+    ctx.fillStyle = '#b38b2e'; ctx.font = 'bold 11px Arial'; ctx.fillText(`Rodada ${currentRoundLabel}`, W / 2, 74);
 
     let y = HEADER_H + 6;
 
@@ -3269,7 +3302,28 @@ export default function App() {
           style={{ width: '100%', background: 'none', border: 'none', padding: '12px 14px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}
         >
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 4 }}>
-            <span style={{ fontSize: 11, color: '#555', fontWeight: 700 }}>📅 {fmtDate(h.date)}</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+              <span style={{ fontSize: 11, color: '#555', fontWeight: 700 }}>
+                📅 {fmtDate(h.date)}{h.roundNumber ? ` · Rodada ${h.roundNumber}` : ''}
+              </span>
+              {isAdmin && (
+                <button
+                  className="btn2"
+                  style={{ padding: '4px 8px', fontSize: 10 }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    const newDate = window.prompt('Digite a data da partida no formato AAAA-MM-DD', h.date || '');
+                    if (newDate && /^\d{4}-\d{2}-\d{2}$/.test(newDate)) {
+                      updateMatchHistoryDate(h.id, newDate);
+                    } else if (newDate) {
+                      alert('Data inválida. Use o formato AAAA-MM-DD.');
+                    }
+                  }}
+                >
+                  EDITAR DATA
+                </button>
+              )}
+            </div>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
               {cfg && <span style={{ fontSize: 12, fontWeight: 700, color: cfg.color }}>{cfg.emoji} {cfg.label}</span>}
               {h.finalScore && <span style={{ fontSize: 11, color: '#777' }}>{TEAMS_CFG[h.finalScore.tA]?.emoji} {h.finalScore.sA} × {h.finalScore.sB} {TEAMS_CFG[h.finalScore.tB]?.emoji}</span>}
@@ -5122,6 +5176,19 @@ export default function App() {
           />
           <div style={{ marginTop: 8, fontSize: 13, color: '#555' }}>
             {dayName(lista.date)}, {fmtDateBR(lista.date)} — 22h00 ⏱️
+          </div>
+
+          <div style={{ marginTop: 12 }}>
+            <label className="lbl">NÚMERO DA RODADA</label>
+            <input
+              type="number"
+              min="1"
+              className="inp"
+              style={{ marginBottom: 0 }}
+              value={lista.rodada || String(matchHistory.length + 1)}
+              onChange={(e) => updateLista({ ...lista, rodada: e.target.value.replace(/\D/g, '') || '1' })}
+              disabled={!isAdmin}
+            />
           </div>
         </div>
 

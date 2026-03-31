@@ -1505,6 +1505,15 @@ export default function App() {
   const updateRounds = (v) => {
     setRounds(v);
     save('fm_rounds', v);
+    // Auto-atualiza a Final com o 1º e 2º da classificação (só se a Final ainda não foi jogada)
+    if (!finale.sA && !finale.sB) {
+      const st = calcStandings(v);
+      if (st.length >= 2) {
+        const newFinale = { ...finale, tA: st[0].team, tB: st[1].team };
+        setFinale(newFinale);
+        save('fm_finale', newFinale);
+      }
+    }
   };
   const updateFinale = (v) => {
     setFinale(v);

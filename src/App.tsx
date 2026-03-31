@@ -2092,23 +2092,32 @@ export default function App() {
         <div className="card" style={{ textAlign: 'center', padding: 14, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
           {currentTopScorer?.tied ? (
             <>
-              <div style={{ display: 'flex', gap: 8, justifyContent: 'center', width: '100%' }}>
+              {/* Linha dos cards - mesma altura */}
+              <div style={{ display: 'flex', gap: 8, justifyContent: 'center', width: '100%', alignItems: 'flex-end' }}>
                 {currentTopScorer.tied.map((p) => (
-                  <div key={p.id} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                  <div key={p.id} style={{ flex: 1, display: 'flex', justifyContent: 'center' }}>
                     {p.cardUrl ? (
                       <img src={p.cardUrl} alt={p.name} onClick={() => setCardModal(p)}
-                        style={{ width: '100%', maxHeight: 120, objectFit: 'contain', objectPosition: 'top', borderRadius: 8, cursor: 'pointer' }} />
+                        style={{ width: '100%', height: 120, objectFit: 'contain', objectPosition: 'bottom', borderRadius: 8, cursor: 'pointer' }} />
                     ) : (
                       <div style={{ width: 80, height: 100, background: `linear-gradient(160deg,#1c1c1c,#252525)`, border: `2px solid ${RANK_COLOR[p.ranking]}`, borderRadius: 8, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
                         <span style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 13, color: RANK_COLOR[p.ranking] }}>{avgOverall(p)}</span>
                         <span style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 20, color: '#eee' }}>{initials(p.name)}</span>
                       </div>
                     )}
-                    <div style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: p.name.length > 8 ? 13 : 16, color: '#4ade80', marginTop: 8, lineHeight: 1.2 }}>{p.name}</div>
                   </div>
                 ))}
               </div>
-              <div style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 22, color: '#4ade80', marginTop: 8, lineHeight: 1.1 }}>
+              {/* Linha dos nomes - mesma linha */}
+              <div style={{ display: 'flex', width: '100%', marginTop: 8 }}>
+                {currentTopScorer.tied.map((p) => (
+                  <div key={p.id} style={{ flex: 1, textAlign: 'center' }}>
+                    <div style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: p.name.length > 8 ? 13 : 16, color: '#4ade80', lineHeight: 1.2 }}>{p.name}</div>
+                  </div>
+                ))}
+              </div>
+              {/* Gols centralizado */}
+              <div style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 22, color: '#4ade80', marginTop: 8 }}>
                 {currentTopScorer.goals} GOLS
               </div>
             </>
@@ -2130,7 +2139,7 @@ export default function App() {
             </div>
             {currentTopScorer && <div style={{ fontSize: 11, color: '#4ade80', fontWeight: 700, marginBottom: 2 }}>{currentTopScorer.goals} gols</div>}
           </>}
-          <div style={{ fontSize: 10, color: '#555', letterSpacing: 1, marginTop: 4 }}>PIKINHA DA NOITE</div>
+          <div style={{ fontSize: 10, color: '#555', letterSpacing: 1, marginTop: 6 }}>PIKINHA DA NOITE</div>
         </div>
 
         {/* Card Líder da Tabela */}

@@ -1433,7 +1433,7 @@ export default function App() {
   const [champTeamPhoto, setChampTeamPhoto] = useState<string | null>(null);
   const [cardModal, setCardModal] = useState(null);
   const [freeAgents, setFreeAgents] = useState([]);
-  const [pendingPicker, setPendingPicker] = useState<{ teamKey: string; pendingId: string } | null>(null);
+  const [pendingPicker, setPendingPicker] = useState(null);
 
   // Sync TEAM_SIZE global with state
   TEAM_SIZE = teamSize;
@@ -1934,6 +1934,160 @@ export default function App() {
     }, 'image/png');
   };
 
+  const exportResumo = async () => {
+    const W = 480, PAD = 20, scale = 2;
+    const standings = calcStandings(rounds);
+    const loadImg = (url: string): Promise<HTMLImageElement | null> =>
+      fetch(url).then(r => r.blob()).then(blob => new Promise((res) => {
+        const img = new Image(); const u = URL.createObjectURL(blob);
+        img.onload = () => { URL.revokeObjectURL(u); res(img); };
+        img.onerror = () => { URL.revokeObjectURL(u); res(null); };
+        img.src = u;
+      })).catch(() => null);
+
+    const cardImgs: Record<string, HTMLImageElement | null> = {};
+    const champImg = champTeamPhoto ? await loadImg(champTeamPhoto) : null;
+    const spotlightPlayers: any[] = [
+      ...(currentTopScorer?.tied ? currentTopScorer.tied : (currentTopScorer ? [players.find(pl => normalizeName(pl.name) === normalizeName(currentTopScorer.name))] : [])),
+      liderTabela, bolaMurcha, bolaDeOuro,
+    ].filter(Boolean);
+    await Promise.all(spotlightPlayers.map(async (p: any) => {
+      if (p?.cardUrl) cardImgs[p.id] = await loadImg(p.cardUrl);
+    }));
+
+    const SECTION_GAP = 14;
+    const CHAMP_H = champImg ? 160 : 0;
+    const HIGHLIGHTS_H = 270;
+    const TABLE_ROW_H = 36, TABLE_HEADER_H = 40;
+    const TABLE_H = TABLE_HEADER_H + standings.length * TABLE_ROW_H + 10;
+    const FINAL_H = 110;
+    const totalH = 56 + (champImg ? CHAMP_H + SECTION_GAP : 0) + HIGHLIGHTS_H + SECTION_GAP + TABLE_H + SECTION_GAP + FINAL_H + PAD;
+
+    const canvas = document.createElement('canvas');
+    canvas.width = W * scale; canvas.height = totalH * scale;
+    const ctx = canvas.getContext('2d')!;
+    ctx.scale(scale, scale);
+
+    ctx.fillStyle = '#0a0a0a'; ctx.fillRect(0, 0, W, totalH);
+    ctx.fillStyle = '#111'; ctx.fillRect(0, 0, W, 50);
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#4ade80'; ctx.font = 'bold 11px Arial'; ctx.fillText('FOMINHAS LEAGUE', W / 2, 18);
+    ctx.fillStyle = '#fff'; ctx.font = 'bold 19px Arial'; ctx.fillText('RESUMO DA RODADA', W / 2, 40);
+
+    let y = 56;
+
+    if (champImg && currentChampionTeam) {
+      const cfg = TEAMS_CFG[currentChampionTeam];
+      ctx.save(); ctx.beginPath(); ctx.roundRect(PAD, y, W - PAD * 2, CHAMP_H, 10); ctx.clip();
+      ctx.drawImage(champImg, PAD, y, W - PAD * 2, CHAMP_H); ctx.restore();
+      const grad = ctx.createLinearGradient(0, y + CHAMP_H * 0.4, 0, y + CHAMP_H);
+      grad.addColorStop(0, 'rgba(0,0,0,0)'); grad.addColorStop(1, 'rgba(0,0,0,0.85)');
+      ctx.fillStyle = grad; ctx.fillRect(PAD, y, W - PAD * 2, CHAMP_H);
+      ctx.textAlign = 'left'; ctx.fillStyle = cfg.color; ctx.font = 'bold 20px Arial';
+      ctx.fillText('🏆 ' + cfg.label.toUpperCase(), PAD + 14, y + CHAMP_H - 28);
+      ctx.fillStyle = '#aaa'; ctx.font = '11px Arial';
+      ctx.fillText('CAMPEÃO DA SEMANA', PAD + 14, y + CHAMP_H - 12);
+      y += CHAMP_H + SECTION_GAP;
+    }
+
+    const drawCard = (p: any, cx: number, cy: number, cw: number, ch: number) => {
+      if (!p) return;
+      const img = cardImgs[p.id];
+      if (img) {
+        ctx.save(); ctx.beginPath(); ctx.roundRect(cx, cy, cw, ch, 8); ctx.clip();
+        ctx.drawImage(img, cx, cy, cw, ch); ctx.restore();
+      } else {
+        const rc = RANK_COLOR[p.ranking] || '#555';
+        ctx.fillStyle = '#1c1c1c'; ctx.beginPath(); ctx.roundRect(cx, cy, cw, ch, 8); ctx.fill();
+        ctx.strokeStyle = rc; ctx.lineWidth = 2; ctx.beginPath(); ctx.roundRect(cx, cy, cw, ch, 8); ctx.stroke();
+        ctx.textAlign = 'center';
+        ctx.fillStyle = rc; ctx.font = 'bold 12px Arial'; ctx.fillText(String(avgOverall(p)), cx + cw / 2, cy + 20);
+        ctx.fillStyle = '#eee'; ctx.font = 'bold 16px Arial'; ctx.fillText(initials(p.name), cx + cw / 2, cy + ch / 2 + 6);
+      }
+    };
+
+    const CARD_W = 86, CARD_H = 114, COL_W = (W - PAD * 2) / 4;
+    const pikinhaPlayer = currentTopScorer?.tied ? null : spotlightPlayers[0];
+    const items = [
+      { player: pikinhaPlayer, tied: currentTopScorer?.tied || null, name: currentTopScorer?.tied ? currentTopScorer.tied.map((p: any) => p.name).join(' / ') : (currentTopScorer?.name || '—'), sub: currentTopScorer ? currentTopScorer.goals + ' gols' : '', tag: 'PIKINHA', color: '#4ade80' },
+      { player: liderTabela, tied: null, name: liderTabela?.name || '—', sub: liderTabela ? liderTabela.champ + '🏆 ' + liderTabela.goals + '⚽' : '', tag: 'LÍDER', color: '#f59e0b' },
+      { player: bolaMurcha, tied: null, name: bolaMurcha?.name || '—', sub: bolaMurcha ? bolaMurcha.champ + '🏆 ' + bolaMurcha.pres + '✅' : '', tag: 'B.MURCHA', color: '#ef4444' },
+      { player: bolaDeOuro, tied: null, name: bolaDeOuro?.name || '—', sub: bolaDeOuro ? bolaDeOuro.goals + '⚽ total' : '', tag: 'B.OURO', color: '#fbbf24' },
+    ];
+
+    items.forEach((item, i) => {
+      const colX = PAD + i * COL_W;
+      const cardX = colX + (COL_W - CARD_W) / 2;
+      if (item.tied) {
+        const mw = (CARD_W - 4) / 2;
+        item.tied.forEach((tp: any, ti: number) => drawCard(tp, cardX + ti * (mw + 4), y, mw, CARD_H));
+      } else {
+        drawCard(item.player, cardX, y, CARD_W, CARD_H);
+      }
+      ctx.textAlign = 'center';
+      const nameX = colX + COL_W / 2;
+      ctx.fillStyle = item.color; ctx.font = `bold ${item.name.length > 10 ? 9 : 11}px Arial`;
+      ctx.fillText(item.name, nameX, y + CARD_H + 14);
+      ctx.fillStyle = '#888'; ctx.font = '9px Arial'; ctx.fillText(item.sub, nameX, y + CARD_H + 26);
+      ctx.fillStyle = item.color + '33'; ctx.fillRect(nameX - 22, y + CARD_H + 32, 44, 14);
+      ctx.fillStyle = item.color; ctx.font = 'bold 8px Arial'; ctx.fillText(item.tag, nameX, y + CARD_H + 42);
+    });
+    y += HIGHLIGHTS_H;
+
+    ctx.strokeStyle = '#222'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(PAD, y); ctx.lineTo(W - PAD, y); ctx.stroke();
+    y += SECTION_GAP;
+
+    ctx.textAlign = 'left'; ctx.fillStyle = '#555'; ctx.font = 'bold 10px Arial';
+    ctx.fillText('CLASSIFICAÇÃO', PAD, y + 12);
+    y += 24;
+    const cols = [PAD + 14, PAD + 50, W - 160, W - 120, W - 76, W - 34];
+    ['#', 'TIME', 'PTS', 'GF', 'GC', 'SG'].forEach((h, i) => {
+      ctx.textAlign = i === 1 ? 'left' : 'center';
+      ctx.fillStyle = '#444'; ctx.font = 'bold 9px Arial'; ctx.fillText(h, cols[i], y);
+    });
+    y += 14;
+    standings.forEach((s, i) => {
+      const rowY = y + i * TABLE_ROW_H;
+      if (i % 2 === 0) { ctx.fillStyle = '#ffffff06'; ctx.fillRect(PAD, rowY - 14, W - PAD * 2, TABLE_ROW_H); }
+      const cfg = TEAMS_CFG[s.team];
+      const rankColor = i === 0 ? '#f59e0b' : i === 1 ? '#94a3b8' : '#555';
+      ctx.textAlign = 'center'; ctx.fillStyle = rankColor; ctx.font = 'bold 13px Arial'; ctx.fillText(String(i + 1), cols[0], rowY + 4);
+      ctx.textAlign = 'left'; ctx.fillStyle = cfg.color; ctx.font = 'bold 12px Arial'; ctx.fillText(cfg.emoji + ' ' + cfg.label, cols[1], rowY + 4);
+      ctx.textAlign = 'center';
+      ctx.fillStyle = '#f0f0f0'; ctx.font = 'bold 14px Arial'; ctx.fillText(String(s.pts), cols[2], rowY + 4);
+      ctx.fillStyle = '#4ade80'; ctx.font = '12px Arial'; ctx.fillText(String(s.gf), cols[3], rowY + 4);
+      ctx.fillStyle = '#ef4444'; ctx.fillText(String(s.gc), cols[4], rowY + 4);
+      ctx.fillStyle = s.sg > 0 ? '#4ade80' : s.sg < 0 ? '#ef4444' : '#555';
+      ctx.font = 'bold 12px Arial'; ctx.fillText((s.sg > 0 ? '+' : '') + s.sg, cols[5], rowY + 4);
+    });
+    y += standings.length * TABLE_ROW_H + SECTION_GAP;
+
+    ctx.strokeStyle = '#222'; ctx.beginPath(); ctx.moveTo(PAD, y); ctx.lineTo(W - PAD, y); ctx.stroke();
+    y += SECTION_GAP;
+
+    const cfgA = TEAMS_CFG[finale.tA], cfgB = TEAMS_CFG[finale.tB];
+    ctx.fillStyle = '#1a1200'; ctx.beginPath(); ctx.roundRect(PAD, y, W - PAD * 2, FINAL_H - 10, 10); ctx.fill();
+    ctx.strokeStyle = '#f59e0b33'; ctx.lineWidth = 1; ctx.beginPath(); ctx.roundRect(PAD, y, W - PAD * 2, FINAL_H - 10, 10); ctx.stroke();
+    ctx.textAlign = 'center'; ctx.fillStyle = '#f59e0b'; ctx.font = 'bold 11px Arial'; ctx.fillText('🏆 GRANDE FINAL', W / 2, y + 18);
+    ctx.textAlign = 'right'; ctx.fillStyle = cfgA.color; ctx.font = 'bold 13px Arial'; ctx.fillText(cfgA.emoji + ' ' + cfgA.label, W / 2 - 30, y + 46);
+    ctx.textAlign = 'left'; ctx.fillStyle = cfgB.color; ctx.fillText(cfgB.emoji + ' ' + cfgB.label, W / 2 + 30, y + 46);
+    if (finale.sA !== '' && finale.sB !== '') {
+      ctx.textAlign = 'right'; ctx.fillStyle = cfgA.color; ctx.font = 'bold 30px Arial'; ctx.fillText(String(finale.sA), W / 2 - 12, y + 82);
+      ctx.textAlign = 'center'; ctx.fillStyle = '#555'; ctx.font = '16px Arial'; ctx.fillText('×', W / 2, y + 78);
+      ctx.textAlign = 'left'; ctx.fillStyle = cfgB.color; ctx.font = 'bold 30px Arial'; ctx.fillText(String(finale.sB), W / 2 + 12, y + 82);
+    }
+
+    canvas.toBlob((blob) => {
+      if (!blob) return;
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.download = 'resumo-fominhas-' + new Date().toISOString().slice(0, 10) + '.png';
+      a.href = url; a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 5000);
+    }, 'image/png');
+  };
+
   const TabInicio = () => (
     <div>
       {/* Countdown Hero */}
@@ -2092,7 +2246,6 @@ export default function App() {
         <div className="card" style={{ textAlign: 'center', padding: 14, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
           {currentTopScorer?.tied ? (
             <>
-              {/* Linha dos cards - mesma altura */}
               <div style={{ display: 'flex', gap: 8, justifyContent: 'center', width: '100%', alignItems: 'flex-end' }}>
                 {currentTopScorer.tied.map((p) => (
                   <div key={p.id} style={{ flex: 1, display: 'flex', justifyContent: 'center' }}>
@@ -2100,7 +2253,7 @@ export default function App() {
                       <img src={p.cardUrl} alt={p.name} onClick={() => setCardModal(p)}
                         style={{ width: '100%', height: 120, objectFit: 'contain', objectPosition: 'bottom', borderRadius: 8, cursor: 'pointer' }} />
                     ) : (
-                      <div style={{ width: 80, height: 100, background: `linear-gradient(160deg,#1c1c1c,#252525)`, border: `2px solid ${RANK_COLOR[p.ranking]}`, borderRadius: 8, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+                      <div style={{ width: 80, height: 100, background: 'linear-gradient(160deg,#1c1c1c,#252525)', border: `2px solid ${RANK_COLOR[p.ranking]}`, borderRadius: 8, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
                         <span style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 13, color: RANK_COLOR[p.ranking] }}>{avgOverall(p)}</span>
                         <span style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 20, color: '#eee' }}>{initials(p.name)}</span>
                       </div>
@@ -2108,7 +2261,6 @@ export default function App() {
                   </div>
                 ))}
               </div>
-              {/* Linha dos nomes - mesma linha */}
               <div style={{ display: 'flex', width: '100%', marginTop: 8 }}>
                 {currentTopScorer.tied.map((p) => (
                   <div key={p.id} style={{ flex: 1, textAlign: 'center' }}>
@@ -2116,10 +2268,7 @@ export default function App() {
                   </div>
                 ))}
               </div>
-              {/* Gols centralizado */}
-              <div style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 22, color: '#4ade80', marginTop: 8 }}>
-                {currentTopScorer.goals} GOLS
-              </div>
+              <div style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 22, color: '#4ade80', marginTop: 8 }}>{currentTopScorer.goals} GOLS</div>
             </>
           ) : currentTopScorer?.cardUrl ? (
             <img src={currentTopScorer.cardUrl} alt={currentTopScorer.name}
@@ -2127,7 +2276,7 @@ export default function App() {
               style={{ width: '100%', maxHeight: 160, objectFit: 'contain', objectPosition: 'top', borderRadius: 8, cursor: 'pointer' }} />
           ) : currentTopScorer ? (
             (() => { const p = players.find(pl => normalizeName(pl.name) === normalizeName(currentTopScorer.name));
-              return <div style={{ width: 100, height: 130, background: `linear-gradient(160deg,#1c1c1c,#252525)`, border: `2px solid ${RANK_COLOR[p?.ranking || 'C']}`, borderRadius: 8, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+              return <div style={{ width: 100, height: 130, background: 'linear-gradient(160deg,#1c1c1c,#252525)', border: `2px solid ${RANK_COLOR[p?.ranking || 'C']}`, borderRadius: 8, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
                 <span style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 14, color: RANK_COLOR[p?.ranking || 'C'] }}>{p ? avgOverall(p) : '—'}</span>
                 <span style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 26, color: '#eee' }}>{initials(currentTopScorer.name)}</span>
               </div>;
@@ -2148,7 +2297,7 @@ export default function App() {
             <img src={liderTabela.cardUrl} alt={liderTabela.name} onClick={() => setCardModal(liderTabela)}
               style={{ width: '100%', maxHeight: 160, objectFit: 'contain', objectPosition: 'top', borderRadius: 8, cursor: 'pointer' }} />
           ) : liderTabela ? (
-            <div style={{ width: 100, height: 130, background: `linear-gradient(160deg,#1c1c1c,#252525)`, border: `2px solid ${RANK_COLOR[liderTabela.ranking]}`, borderRadius: 8, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+            <div style={{ width: 100, height: 130, background: 'linear-gradient(160deg,#1c1c1c,#252525)', border: `2px solid ${RANK_COLOR[liderTabela.ranking]}`, borderRadius: 8, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
               <span style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 14, color: RANK_COLOR[liderTabela.ranking] }}>{avgOverall(liderTabela)}</span>
               <span style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 26, color: '#eee' }}>{initials(liderTabela.name)}</span>
             </div>
@@ -2166,7 +2315,7 @@ export default function App() {
             <img src={bolaMurcha.cardUrl} alt={bolaMurcha.name} onClick={() => setCardModal(bolaMurcha)}
               style={{ width: '100%', maxHeight: 160, objectFit: 'contain', objectPosition: 'top', borderRadius: 8, cursor: 'pointer' }} />
           ) : bolaMurcha ? (
-            <div style={{ width: 100, height: 130, background: `linear-gradient(160deg,#1c1c1c,#252525)`, border: `2px solid ${RANK_COLOR[bolaMurcha.ranking]}`, borderRadius: 8, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+            <div style={{ width: 100, height: 130, background: 'linear-gradient(160deg,#1c1c1c,#252525)', border: `2px solid ${RANK_COLOR[bolaMurcha.ranking]}`, borderRadius: 8, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
               <span style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 14, color: RANK_COLOR[bolaMurcha.ranking] }}>{avgOverall(bolaMurcha)}</span>
               <span style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 26, color: '#eee' }}>{initials(bolaMurcha.name)}</span>
             </div>
@@ -2198,6 +2347,13 @@ export default function App() {
           <div style={{ fontSize: 10, color: '#555', letterSpacing: 1 }}>BOLA DE OURO</div>
         </div>
       </div>
+
+      <button
+        onClick={exportResumo}
+        style={{ width: '100%', background: 'linear-gradient(135deg,#1a1200,#2a1e00)', border: '1px solid #f59e0b44', borderRadius: 10, padding: '12px', color: '#f59e0b', fontSize: 13, cursor: 'pointer', fontFamily: "'Barlow',sans-serif", fontWeight: 700, letterSpacing: 1, marginBottom: 12 }}
+      >
+        📸 EXPORTAR RESUMO DA RODADA
+      </button>
 
       {drawn && (
         <div id="times-semana-export" style={{ background: '#0a0a0a', borderRadius: 12 }}>
@@ -2908,7 +3064,10 @@ export default function App() {
                           alignItems: 'center',
                           justifyContent: 'space-between',
                           padding: '8px 0',
-                          borderBottom: i < drawn[k].length - 1 ? `1px solid ${cfg.color}1a` : 'none',
+                          borderBottom:
+                            i < drawn[k].length - 1
+                              ? `1px solid ${cfg.color}1a`
+                              : 'none',
                           opacity: p.isPending ? 0.78 : 1,
                           position: 'relative',
                         }}
@@ -2963,16 +3122,22 @@ export default function App() {
                                 <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
                                   {Object.entries(TEAMS_CFG).filter(([tk]) => tk !== k).map(([tk, tc]) => (
                                     <button key={tk} onClick={() => movePlayerBetweenTeams(p.id, k, tk)}
-                                      style={{ background: tc.color + '22', border: `1px solid ${tc.color}66`, color: tc.color, borderRadius: 6, padding: '2px 7px', fontSize: 11, cursor: 'pointer', fontWeight: 700 }}>{tc.emoji}</button>
+                                      style={{ background: tc.color + '22', border: `1px solid ${tc.color}66`, color: tc.color, borderRadius: 6, padding: '2px 7px', fontSize: 11, cursor: 'pointer', fontWeight: 700 }}>
+                                      {tc.emoji}
+                                    </button>
                                   ))}
                                   <button onClick={() => setMovePlayer(null)} style={{ background: 'none', border: 'none', color: '#555', cursor: 'pointer', fontSize: 13, padding: '2px 4px' }}>✕</button>
                                 </div>
                               ) : (
                                 <>
-                                  <button onClick={() => setMovePlayer({ playerId: p.id, fromTeam: k })}
-                                    style={{ background: '#1a1a2e', border: '1px solid #2a2a5a', color: '#818cf8', borderRadius: 6, width: 22, height: 22, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: 12, padding: 0 }}>⇄</button>
-                                  <button onClick={() => removeFromTeam(k, p.id)}
-                                    style={{ background: '#1a0a0a', border: '1px solid #2a1212', color: '#555', borderRadius: 6, width: 22, height: 22, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: 12, padding: 0, lineHeight: 1 }}>✕</button>
+                                  <button onClick={() => setMovePlayer({ playerId: p.id, fromTeam: k })} title="Mover para outro time"
+                                    style={{ background: '#1a1a2e', border: '1px solid #2a2a5a', color: '#818cf8', borderRadius: 6, width: 22, height: 22, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: 12, padding: 0 }}>
+                                    ⇄
+                                  </button>
+                                  <button onClick={() => removeFromTeam(k, p.id)} title="Remover do time"
+                                    style={{ background: '#1a0a0a', border: '1px solid #2a1212', color: '#555', borderRadius: 6, width: 22, height: 22, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: 12, padding: 0, lineHeight: 1 }}>
+                                    ✕
+                                  </button>
                                 </>
                               )}
                             </div>
@@ -3028,6 +3193,7 @@ export default function App() {
                 </div>
               )
           )}
+
         {drawn && freeAgents.length > 0 && (
           <div style={{ background: '#0d0d1a', border: '1px solid #2a2a5a', borderRadius: 12, padding: 14, marginTop: 4 }}>
             <div style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 16, color: '#818cf8', letterSpacing: 2, marginBottom: 10 }}>🔄 DISPONÍVEIS ({freeAgents.length})</div>

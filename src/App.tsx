@@ -1432,6 +1432,8 @@ export default function App() {
   const [showHistory, setShowHistory] = useState(false);
   const [champTeamPhoto, setChampTeamPhoto] = useState<string | null>(null);
   const [cardModal, setCardModal] = useState(null);
+  const [freeAgents, setFreeAgents] = useState([]);
+  const [pendingPicker, setPendingPicker] = useState<{ teamKey: string; pendingId: string } | null>(null);
 
   // Sync TEAM_SIZE global with state
   TEAM_SIZE = teamSize;
@@ -2608,27 +2610,61 @@ export default function App() {
       )
       .filter(Boolean);
 
+    const sortTeam = (team) => {
+      const real = team.filter(p => !p.isPending).sort((a, b) => avgOverall(b) - avgOverall(a));
+      const pending = team.filter(p => p.isPending);
+      return [...real, ...pending];
+    };
+
     const doShuffle = () => {
       if (naLista.length < TEAM_SIZE) {
         alert(`Adicione pelo menos ${TEAM_SIZE} jogadores na Lista antes de sortear!`);
         return;
       }
       const t = drawTeams(naLista);
+      Object.keys(t).forEach(tk => { t[tk] = sortTeam(t[tk]); });
       updateDrawn(t);
+      setFreeAgents([]);
+      setPendingPicker(null);
       setConfirmDesfazer(false);
     };
 
     const doDesfazer = () => {
       updateDrawn(null);
+      setFreeAgents([]);
+      setPendingPicker(null);
       setConfirmDesfazer(false);
     };
 
     const removeFromTeam = (teamKey, playerId) => {
       if (!isAdmin || !drawn) return;
-      const allRealPlayers = Object.values(drawn)
-        .flat()
-        .filter((p) => !p.isPending && p.id !== playerId);
-      updateDrawn(drawTeams(allRealPlayers));
+      const player = drawn[teamKey]?.find(p => p.id === playerId);
+      if (!player || player.isPending) return;
+      setFreeAgents(prev => [...prev, player]);
+      const newDrawn = {};
+      Object.keys(TEAMS_CFG).forEach(tk => {
+        newDrawn[tk] = (drawn[tk] || []).filter(p => !p.isPending && p.id !== playerId);
+      });
+      const allReal = Object.values(newDrawn).flat();
+      const balanced = fillPendingSlots(newDrawn, allReal);
+      Object.keys(balanced).forEach(tk => { balanced[tk] = sortTeam(balanced[tk]); });
+      updateDrawn(balanced);
+    };
+
+    const assignFreeAgentToTeam = (agentId, teamKey) => {
+      const agent = freeAgents.find(p => p.id === agentId);
+      if (!agent || !drawn) return;
+      const newDrawn = {};
+      Object.keys(TEAMS_CFG).forEach(tk => {
+        newDrawn[tk] = [...(drawn[tk] || [])];
+      });
+      const pendingIdx = newDrawn[teamKey].findIndex(p => p.isPending);
+      if (pendingIdx >= 0) newDrawn[teamKey].splice(pendingIdx, 1);
+      newDrawn[teamKey] = [...newDrawn[teamKey], agent];
+      Object.keys(newDrawn).forEach(tk => { newDrawn[tk] = sortTeam(newDrawn[tk]); });
+      setFreeAgents(prev => prev.filter(p => p.id !== agentId));
+      setPendingPicker(null);
+      updateDrawn(newDrawn);
     };
 
     const [movePlayer, setMovePlayer] = useState(null);
@@ -2644,6 +2680,7 @@ export default function App() {
       if (toTeam) newDrawn[toTeam] = [...newDrawn[toTeam], player];
       const allReal = Object.values(newDrawn).flat();
       const balanced = fillPendingSlots(newDrawn, allReal);
+      Object.keys(balanced).forEach(tk => { balanced[tk] = sortTeam(balanced[tk]); });
       updateDrawn(balanced);
       setMovePlayer(null);
     };
@@ -2874,6 +2911,7 @@ export default function App() {
                               ? `1px solid ${cfg.color}1a`
                               : 'none',
                           opacity: p.isPending ? 0.78 : 1,
+                          position: 'relative',
                         }}
                       >
                         <div
@@ -2946,6 +2984,27 @@ export default function App() {
                               )}
                             </div>
                           )}
+                          {isAdmin && p.isPending && freeAgents.length > 0 && (
+                            <button
+                              onClick={() => setPendingPicker(pendingPicker?.pendingId === String(p.id) ? null : { teamKey: k, pendingId: String(p.id) })}
+                              title="Atribuir jogador disponível"
+                              style={{ background: pendingPicker?.pendingId === String(p.id) ? cfg.color + '33' : '#1a1a0a', border: `1px solid ${pendingPicker?.pendingId === String(p.id) ? cfg.color : '#3a3a1a'}`, color: cfg.color, borderRadius: 6, padding: '2px 8px', fontSize: 11, cursor: 'pointer', fontWeight: 700 }}>
+                              + Atribuir
+                            </button>
+                          )}
+                          {isAdmin && p.isPending && pendingPicker?.pendingId === String(p.id) && (
+                            <div style={{ position: 'absolute', right: 14, top: '100%', zIndex: 10, background: '#1a1a1a', border: `1px solid ${cfg.color}44`, borderRadius: 10, padding: 10, minWidth: 180, boxShadow: '0 4px 20px rgba(0,0,0,0.7)' }}>
+                              <div style={{ fontSize: 10, color: '#555', letterSpacing: 1, marginBottom: 8 }}>ESCOLHER JOGADOR</div>
+                              {freeAgents.map(fa => (
+                                <button key={fa.id} onClick={() => assignFreeAgentToTeam(fa.id, k)}
+                                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', background: '#111', border: '1px solid #2a2a2a', borderRadius: 7, padding: '6px 10px', marginBottom: 4, cursor: 'pointer', color: '#fff', fontSize: 13, fontWeight: 600 }}>
+                                  <span>{fa.name}</span>
+                                  <span style={{ color: '#555', fontSize: 11 }}>overall {avgOverall(fa)}</span>
+                                </button>
+                              ))}
+                              <button onClick={() => setPendingPicker(null)} style={{ width: '100%', background: 'none', border: 'none', color: '#444', fontSize: 11, cursor: 'pointer', marginTop: 2 }}>Cancelar</button>
+                            </div>
+                          )}
                         </div>
                       </div>
                     );
@@ -2978,6 +3037,34 @@ export default function App() {
                 </div>
               )
           )}
+
+        {drawn && freeAgents.length > 0 && (
+          <div style={{ background: '#0d0d1a', border: '1px solid #2a2a5a', borderRadius: 12, padding: 14, marginTop: 4 }}>
+            <div style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 16, color: '#818cf8', letterSpacing: 2, marginBottom: 10 }}>
+              🔄 DISPONÍVEIS ({freeAgents.length})
+            </div>
+            {freeAgents.map(fa => (
+              <div key={fa.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '7px 0', borderBottom: '1px solid #1a1a2a' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ width: 26, height: 26, borderRadius: 6, background: RANK_COLOR[fa.ranking] + '1a', border: `1px solid ${RANK_COLOR[fa.ranking]}55`, color: RANK_COLOR[fa.ranking], display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 900 }}>
+                    {fa.ranking}
+                  </span>
+                  <span style={{ fontWeight: 600, fontSize: 14 }}>{fa.name}</span>
+                  <span style={{ color: '#555', fontSize: 11 }}>overall {avgOverall(fa)}</span>
+                </div>
+                <div style={{ display: 'flex', gap: 4 }}>
+                  {Object.entries(TEAMS_CFG).map(([tk, tc]) => (
+                    <button key={tk} onClick={() => assignFreeAgentToTeam(fa.id, tk)}
+                      title={`Adicionar ao ${tc.label}`}
+                      style={{ background: tc.color + '22', border: `1px solid ${tc.color}55`, color: tc.color, borderRadius: 6, padding: '3px 7px', fontSize: 12, cursor: 'pointer', fontWeight: 700 }}>
+                      {tc.emoji}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     );
   };
@@ -3576,7 +3663,7 @@ export default function App() {
             const ordered = [...teamPlayers].sort(
               (a, b) =>
                 (scorers[b.id] || 0) - (scorers[a.id] || 0) ||
-                a.name.localeCompare(b.name)
+                avgOverall(b) - avgOverall(a)
             );
             return (
               <div
@@ -3729,7 +3816,7 @@ export default function App() {
               .sort(
                 (a, b) =>
                   (scorers[b.id] || 0) - (scorers[a.id] || 0) ||
-                  a.name.localeCompare(b.name)
+                  avgOverall(b) - avgOverall(a)
               )
               .map((p, i, arr) => {
                 const g = scorers[p.id] || 0;

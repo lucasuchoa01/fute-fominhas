@@ -1937,6 +1937,12 @@ export default function App() {
   const exportResumo = async () => {
     const W = 480, PAD = 20, scale = 2;
     const standings = calcStandings(rounds);
+    const formatDateBR = (iso?: string) => {
+      if (!iso) return '';
+      const [y, m, d] = iso.split('-');
+      if (!y || !m || !d) return iso;
+      return `${d}/${m}/${y}`;
+    };
     const loadImg = (url: string): Promise<HTMLImageElement | null> =>
       fetch(url).then(r => r.blob()).then(blob => new Promise((res) => {
         const img = new Image(); const u = URL.createObjectURL(blob);
@@ -1964,7 +1970,7 @@ export default function App() {
     const TABLE_ROW_H = 36, TABLE_HEADER_H = 40;
     const TABLE_H = TABLE_HEADER_H + standings.length * TABLE_ROW_H + 10;
     const FINAL_H = 110;
-    const HEADER_H = 50;
+    const HEADER_H = 70;
     const totalH = HEADER_H + (champImg ? CHAMP_H + SECTION_GAP : 0) + HIGHLIGHTS_H + SECTION_GAP + TABLE_H + SECTION_GAP + FINAL_H + PAD;
 
     const canvas = document.createElement('canvas');
@@ -1977,6 +1983,7 @@ export default function App() {
     ctx.textAlign = 'center';
     ctx.fillStyle = '#4ade80'; ctx.font = 'bold 11px Arial'; ctx.fillText('FOMINHAS LEAGUE', W / 2, 18);
     ctx.fillStyle = '#fff'; ctx.font = 'bold 19px Arial'; ctx.fillText('RESUMO DA RODADA', W / 2, 40);
+    ctx.fillStyle = '#888'; ctx.font = '12px Arial'; ctx.fillText(`Data: ${formatDateBR(lista?.date)}`, W / 2, 58);
 
     let y = HEADER_H + 6;
 
@@ -2015,10 +2022,10 @@ export default function App() {
     // Highlights — 4 columns, compact
     const pikinhaPlayer = currentTopScorer?.tied ? null : spotlightPlayers[0];
     const items = [
-      { player: pikinhaPlayer, tied: currentTopScorer?.tied || null, name: currentTopScorer?.tied ? currentTopScorer.tied.map((p: any) => p.name).join(' / ') : (currentTopScorer?.name || '—'), sub: currentTopScorer ? currentTopScorer.goals + ' gols' : '', tag: 'PIKINHA', color: '#4ade80' },
-      { player: liderTabela, tied: null, name: liderTabela?.name || '—', sub: liderTabela ? liderTabela.champ + '🏆 ' + liderTabela.goals + '⚽' : '', tag: 'LÍDER', color: '#f59e0b' },
-      { player: bolaMurcha, tied: null, name: bolaMurcha?.name || '—', sub: bolaMurcha ? bolaMurcha.champ + '🏆 ' + bolaMurcha.pres + '✅' : '', tag: 'B.MURCHA', color: '#ef4444' },
-      { player: bolaDeOuro, tied: null, name: bolaDeOuro?.name || '—', sub: bolaDeOuro ? bolaDeOuro.goals + '⚽ total' : '', tag: 'B.OURO', color: '#fbbf24' },
+      { player: pikinhaPlayer, tied: currentTopScorer?.tied || null, name: currentTopScorer?.tied ? currentTopScorer.tied.map((p: any) => p.name).join(' / ') : (currentTopScorer?.name || '—'), sub: currentTopScorer ? currentTopScorer.goals + ' gols' : '', tag: 'PIKINHA DA NOITE', color: '#4ade80' },
+      { player: liderTabela, tied: null, name: liderTabela?.name || '—', sub: liderTabela ? liderTabela.champ + '🏆 ' + liderTabela.goals + '⚽' : '', tag: 'LÍDER DA TABELA', color: '#f59e0b' },
+      { player: bolaMurcha, tied: null, name: bolaMurcha?.name || '—', sub: bolaMurcha ? bolaMurcha.champ + '🏆 ' + bolaMurcha.pres + '✅' : '', tag: 'BOLA MURCHA', color: '#ef4444' },
+      { player: bolaDeOuro, tied: null, name: bolaDeOuro?.name || '—', sub: bolaDeOuro ? bolaDeOuro.goals + '⚽ total' : '', tag: 'BOLA DE OURO', color: '#fbbf24' },
     ];
 
     items.forEach((item, i) => {
@@ -2036,8 +2043,15 @@ export default function App() {
       ctx.fillText(item.name, nameX, y + CARD_H + 13);
       ctx.fillStyle = '#888'; ctx.font = '9px Arial';
       ctx.fillText(item.sub, nameX, y + CARD_H + 24);
-      ctx.fillStyle = item.color + '33'; ctx.fillRect(nameX - 22, y + CARD_H + 30, 44, 14);
-      ctx.fillStyle = item.color; ctx.font = 'bold 8px Arial';
+      ctx.fillStyle = item.color;
+      ctx.font = 'bold 8px Arial';
+      const tagTextWidth = ctx.measureText(item.tag).width;
+      const tagPadX = 8;
+      const tagW = Math.max(44, Math.ceil(tagTextWidth + tagPadX * 2));
+      const tagX = nameX - tagW / 2;
+      ctx.fillStyle = item.color + '33';
+      ctx.fillRect(tagX, y + CARD_H + 30, tagW, 14);
+      ctx.fillStyle = item.color;
       ctx.fillText(item.tag, nameX, y + CARD_H + 40);
     });
     y += HIGHLIGHTS_H;
@@ -2080,13 +2094,24 @@ export default function App() {
     ctx.fillStyle = '#1a1200'; ctx.beginPath(); ctx.roundRect(PAD, y, W - PAD * 2, FINAL_H - 10, 10); ctx.fill();
     ctx.strokeStyle = '#f59e0b33'; ctx.lineWidth = 1; ctx.beginPath(); ctx.roundRect(PAD, y, W - PAD * 2, FINAL_H - 10, 10); ctx.stroke();
     ctx.textAlign = 'center'; ctx.fillStyle = '#f59e0b'; ctx.font = 'bold 11px Arial'; ctx.fillText('🏆 GRANDE FINAL', W / 2, y + 18);
-    ctx.textAlign = 'right'; ctx.fillStyle = cfgA.color; ctx.font = 'bold 13px Arial'; ctx.fillText(cfgA.emoji + ' ' + cfgA.label, W / 2 - 30, y + 46);
-    ctx.textAlign = 'left'; ctx.fillStyle = cfgB.color; ctx.fillText(cfgB.emoji + ' ' + cfgB.label, W / 2 + 30, y + 46);
+
+    const finalLineY = y + 50;
+    const leftTeamX = W / 2 - 56;
+    const scoreAX = W / 2 - 16;
+    const scoreBX = W / 2 + 16;
+    const rightTeamX = W / 2 + 56;
+
+    ctx.textAlign = 'right'; ctx.fillStyle = cfgA.color; ctx.font = 'bold 13px Arial'; ctx.fillText(cfgA.emoji + ' ' + cfgA.label, leftTeamX, finalLineY);
+
     if (finale.sA !== '' && finale.sB !== '') {
-      ctx.textAlign = 'right'; ctx.fillStyle = cfgA.color; ctx.font = 'bold 30px Arial'; ctx.fillText(String(finale.sA), W / 2 - 12, y + 82);
-      ctx.textAlign = 'center'; ctx.fillStyle = '#555'; ctx.font = '16px Arial'; ctx.fillText('×', W / 2, y + 78);
-      ctx.textAlign = 'left'; ctx.fillStyle = cfgB.color; ctx.font = 'bold 30px Arial'; ctx.fillText(String(finale.sB), W / 2 + 12, y + 82);
+      ctx.textAlign = 'right'; ctx.fillStyle = cfgA.color; ctx.font = 'bold 30px Arial'; ctx.fillText(String(finale.sA), scoreAX, finalLineY + 10);
+      ctx.textAlign = 'center'; ctx.fillStyle = '#555'; ctx.font = '16px Arial'; ctx.fillText('×', W / 2, finalLineY + 6);
+      ctx.textAlign = 'left'; ctx.fillStyle = cfgB.color; ctx.font = 'bold 30px Arial'; ctx.fillText(String(finale.sB), scoreBX, finalLineY + 10);
+    } else {
+      ctx.textAlign = 'center'; ctx.fillStyle = '#555'; ctx.font = '16px Arial'; ctx.fillText('×', W / 2, finalLineY + 6);
     }
+
+    ctx.textAlign = 'left'; ctx.fillStyle = cfgB.color; ctx.font = 'bold 13px Arial'; ctx.fillText(cfgB.emoji + ' ' + cfgB.label, rightTeamX, finalLineY);
 
     canvas.toBlob((blob) => {
       if (!blob) return;

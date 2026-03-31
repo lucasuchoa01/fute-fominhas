@@ -1955,13 +1955,17 @@ export default function App() {
       if (p?.cardUrl) cardImgs[p.id] = await loadImg(p.cardUrl);
     }));
 
-    const SECTION_GAP = 14;
-    const CHAMP_H = champImg ? 160 : 0;
-    const HIGHLIGHTS_H = 270;
+    // --- Layout constants ---
+    const SECTION_GAP = 12;
+    const CHAMP_H = champImg ? 220 : 0; // bigger champion photo
+    const CARD_H = 120, CARD_W = 90;
+    const COL_W = (W - PAD * 2) / 4;
+    const HIGHLIGHTS_H = CARD_H + 60; // card + name + sub + badge, no extra slack
     const TABLE_ROW_H = 36, TABLE_HEADER_H = 40;
     const TABLE_H = TABLE_HEADER_H + standings.length * TABLE_ROW_H + 10;
     const FINAL_H = 110;
-    const totalH = 56 + (champImg ? CHAMP_H + SECTION_GAP : 0) + HIGHLIGHTS_H + SECTION_GAP + TABLE_H + SECTION_GAP + FINAL_H + PAD;
+    const HEADER_H = 50;
+    const totalH = HEADER_H + (champImg ? CHAMP_H + SECTION_GAP : 0) + HIGHLIGHTS_H + SECTION_GAP + TABLE_H + SECTION_GAP + FINAL_H + PAD;
 
     const canvas = document.createElement('canvas');
     canvas.width = W * scale; canvas.height = totalH * scale;
@@ -1969,27 +1973,29 @@ export default function App() {
     ctx.scale(scale, scale);
 
     ctx.fillStyle = '#0a0a0a'; ctx.fillRect(0, 0, W, totalH);
-    ctx.fillStyle = '#111'; ctx.fillRect(0, 0, W, 50);
+    ctx.fillStyle = '#111'; ctx.fillRect(0, 0, W, HEADER_H);
     ctx.textAlign = 'center';
     ctx.fillStyle = '#4ade80'; ctx.font = 'bold 11px Arial'; ctx.fillText('FOMINHAS LEAGUE', W / 2, 18);
     ctx.fillStyle = '#fff'; ctx.font = 'bold 19px Arial'; ctx.fillText('RESUMO DA RODADA', W / 2, 40);
 
-    let y = 56;
+    let y = HEADER_H + 6;
 
+    // Champion photo — taller
     if (champImg && currentChampionTeam) {
       const cfg = TEAMS_CFG[currentChampionTeam];
       ctx.save(); ctx.beginPath(); ctx.roundRect(PAD, y, W - PAD * 2, CHAMP_H, 10); ctx.clip();
       ctx.drawImage(champImg, PAD, y, W - PAD * 2, CHAMP_H); ctx.restore();
-      const grad = ctx.createLinearGradient(0, y + CHAMP_H * 0.4, 0, y + CHAMP_H);
-      grad.addColorStop(0, 'rgba(0,0,0,0)'); grad.addColorStop(1, 'rgba(0,0,0,0.85)');
+      const grad = ctx.createLinearGradient(0, y + CHAMP_H * 0.5, 0, y + CHAMP_H);
+      grad.addColorStop(0, 'rgba(0,0,0,0)'); grad.addColorStop(1, 'rgba(0,0,0,0.9)');
       ctx.fillStyle = grad; ctx.fillRect(PAD, y, W - PAD * 2, CHAMP_H);
-      ctx.textAlign = 'left'; ctx.fillStyle = cfg.color; ctx.font = 'bold 20px Arial';
+      ctx.textAlign = 'left'; ctx.fillStyle = cfg.color; ctx.font = 'bold 22px Arial';
       ctx.fillText('🏆 ' + cfg.label.toUpperCase(), PAD + 14, y + CHAMP_H - 28);
-      ctx.fillStyle = '#aaa'; ctx.font = '11px Arial';
-      ctx.fillText('CAMPEÃO DA SEMANA', PAD + 14, y + CHAMP_H - 12);
+      ctx.fillStyle = '#bbb'; ctx.font = '11px Arial';
+      ctx.fillText('CAMPEÃO DA SEMANA', PAD + 14, y + CHAMP_H - 10);
       y += CHAMP_H + SECTION_GAP;
     }
 
+    // Draw card helper
     const drawCard = (p: any, cx: number, cy: number, cw: number, ch: number) => {
       if (!p) return;
       const img = cardImgs[p.id];
@@ -2001,12 +2007,12 @@ export default function App() {
         ctx.fillStyle = '#1c1c1c'; ctx.beginPath(); ctx.roundRect(cx, cy, cw, ch, 8); ctx.fill();
         ctx.strokeStyle = rc; ctx.lineWidth = 2; ctx.beginPath(); ctx.roundRect(cx, cy, cw, ch, 8); ctx.stroke();
         ctx.textAlign = 'center';
-        ctx.fillStyle = rc; ctx.font = 'bold 12px Arial'; ctx.fillText(String(avgOverall(p)), cx + cw / 2, cy + 20);
-        ctx.fillStyle = '#eee'; ctx.font = 'bold 16px Arial'; ctx.fillText(initials(p.name), cx + cw / 2, cy + ch / 2 + 6);
+        ctx.fillStyle = rc; ctx.font = 'bold 13px Arial'; ctx.fillText(String(avgOverall(p)), cx + cw / 2, cy + 22);
+        ctx.fillStyle = '#eee'; ctx.font = 'bold 18px Arial'; ctx.fillText(initials(p.name), cx + cw / 2, cy + ch / 2 + 8);
       }
     };
 
-    const CARD_W = 86, CARD_H = 114, COL_W = (W - PAD * 2) / 4;
+    // Highlights — 4 columns, compact
     const pikinhaPlayer = currentTopScorer?.tied ? null : spotlightPlayers[0];
     const items = [
       { player: pikinhaPlayer, tied: currentTopScorer?.tied || null, name: currentTopScorer?.tied ? currentTopScorer.tied.map((p: any) => p.name).join(' / ') : (currentTopScorer?.name || '—'), sub: currentTopScorer ? currentTopScorer.goals + ' gols' : '', tag: 'PIKINHA', color: '#4ade80' },
@@ -2024,16 +2030,19 @@ export default function App() {
       } else {
         drawCard(item.player, cardX, y, CARD_W, CARD_H);
       }
-      ctx.textAlign = 'center';
       const nameX = colX + COL_W / 2;
+      ctx.textAlign = 'center';
       ctx.fillStyle = item.color; ctx.font = `bold ${item.name.length > 10 ? 9 : 11}px Arial`;
-      ctx.fillText(item.name, nameX, y + CARD_H + 14);
-      ctx.fillStyle = '#888'; ctx.font = '9px Arial'; ctx.fillText(item.sub, nameX, y + CARD_H + 26);
-      ctx.fillStyle = item.color + '33'; ctx.fillRect(nameX - 22, y + CARD_H + 32, 44, 14);
-      ctx.fillStyle = item.color; ctx.font = 'bold 8px Arial'; ctx.fillText(item.tag, nameX, y + CARD_H + 42);
+      ctx.fillText(item.name, nameX, y + CARD_H + 13);
+      ctx.fillStyle = '#888'; ctx.font = '9px Arial';
+      ctx.fillText(item.sub, nameX, y + CARD_H + 24);
+      ctx.fillStyle = item.color + '33'; ctx.fillRect(nameX - 22, y + CARD_H + 30, 44, 14);
+      ctx.fillStyle = item.color; ctx.font = 'bold 8px Arial';
+      ctx.fillText(item.tag, nameX, y + CARD_H + 40);
     });
     y += HIGHLIGHTS_H;
 
+    // Divider + standings
     ctx.strokeStyle = '#222'; ctx.lineWidth = 1;
     ctx.beginPath(); ctx.moveTo(PAD, y); ctx.lineTo(W - PAD, y); ctx.stroke();
     y += SECTION_GAP;
@@ -2066,6 +2075,7 @@ export default function App() {
     ctx.strokeStyle = '#222'; ctx.beginPath(); ctx.moveTo(PAD, y); ctx.lineTo(W - PAD, y); ctx.stroke();
     y += SECTION_GAP;
 
+    // Final
     const cfgA = TEAMS_CFG[finale.tA], cfgB = TEAMS_CFG[finale.tB];
     ctx.fillStyle = '#1a1200'; ctx.beginPath(); ctx.roundRect(PAD, y, W - PAD * 2, FINAL_H - 10, 10); ctx.fill();
     ctx.strokeStyle = '#f59e0b33'; ctx.lineWidth = 1; ctx.beginPath(); ctx.roundRect(PAD, y, W - PAD * 2, FINAL_H - 10, 10); ctx.stroke();
@@ -3810,7 +3820,8 @@ export default function App() {
               .filter(Boolean);
             if (!teamPlayers.length) return null;
             const ordered = [...teamPlayers].sort(
-              (a, b) => (scorers[b.id] || 0) - (scorers[a.id] || 0) || avgOverall(b) - avgOverall(a)
+              (a, b) =>
+                (scorers[b.id] || 0) - (scorers[a.id] || 0) || avgOverall(b) - avgOverall(a)
             );
             return (
               <div

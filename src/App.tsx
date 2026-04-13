@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { initializeApp } from 'firebase/app';
-import { getFirestore, doc, getDoc, setDoc } from 'firebase/firestore';
+import { getFirestore, doc, getDoc, setDoc, enableIndexedDbPersistence } from 'firebase/firestore';
 import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { getAnalytics } from 'firebase/analytics';
 
@@ -16,6 +16,9 @@ const firebaseApp = initializeApp(firebaseConfig);
 const db = getFirestore(firebaseApp);
 const storage = getStorage(firebaseApp);
 const analytics = getAnalytics(firebaseApp);
+enableIndexedDbPersistence(db).catch((err) => {
+  console.warn('Cache offline indisponível:', err.code);
+});
 
 // ============ CONSTANTS ============
 
@@ -1390,8 +1393,8 @@ function ModalEdit({ editP, setEditP, setShowEdt, players, updatePlayers }) {
 
 export default function App() {
   const [tab, setTab] = useState('inicio');
-  const [players, setPlayers] = useState(INITIAL_PLAYERS);
-  const [drawn, setDrawn] = useState(null);
+const [players, setPlayers] = useState([]);
+const [loading, setLoading] = useState(true);  const [drawn, setDrawn] = useState(null);
   const [active, setActive] = useState(INITIAL_PLAYERS.map((p) => p.id));
   const [rounds, setRounds] = useState(INIT_ROUNDS);
   const [finale, setFinale] = useState(INIT_FINAL);
@@ -1503,7 +1506,9 @@ export default function App() {
           setMatchHistory(deduped);
           if (deduped.length !== mh.length) save('fm_matchHistory', deduped);
         }
-      } catch (e) { console.error('Erro Firestore:', e); }
+      } catch (e) { console.error('Erro Firestore:', e); } finally {
+        setLoading(false);
+      }
     })();
   }, []);
 
@@ -5838,13 +5843,26 @@ export default function App() {
 
         {/* Content */}
         <div className="content" ref={scrollRef} onScroll={handleScroll}>
-          {tab === 'inicio' && <TabInicio />}
-          {tab === 'lista' && <TabLista />}
-          {tab === 'jogadores' && <TabJogadores />}
-          {tab === 'sorteio' && <TabSorteio />}
-          {tab === 'partida' && <TabPartida />}
-          {tab === 'tabela' && <TabTabela />}
-          {tab === 'caixa' && <TabCaixa />}
+          {loading ? (
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', gap: 16 }}>
+              <img
+                src="https://firebasestorage.googleapis.com/v0/b/fominhas-league.firebasestorage.app/o/ChatGPT%20Image%2028%20de%20mar.%20de%202026%2C%2012_49_00.png?alt=media&token=af95c5c4-8e3a-4c12-88ab-632241979db7"
+                style={{ width: 100, opacity: 0.8 }}
+              />
+              <div style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 22, color: '#4ade80', letterSpacing: 3 }}>Carregando...</div>
+              <div style={{ fontSize: 12, color: '#333' }}>Buscando dados da liga ⚽</div>
+            </div>
+          ) : (
+            <>
+              {tab === 'inicio' && <TabInicio />}
+              {tab === 'lista' && <TabLista />}
+              {tab === 'jogadores' && <TabJogadores />}
+              {tab === 'sorteio' && <TabSorteio />}
+              {tab === 'partida' && <TabPartida />}
+              {tab === 'tabela' && <TabTabela />}
+              {tab === 'caixa' && <TabCaixa />}
+            </>
+          )}
         </div>
 
         {/* Bottom nav */}

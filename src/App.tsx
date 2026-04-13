@@ -2218,6 +2218,7 @@ const [loading, setLoading] = useState(true);  const [drawn, setDrawn] = useStat
               <img
                 src={champTeamPhoto}
                 alt="Time Campeão"
+                loading="lazy"
                 style={{ width: '100%', maxHeight: 220, objectFit: 'cover', objectPosition: 'center top', display: 'block' }}
               />
               <div style={{
@@ -2323,7 +2324,7 @@ const [loading, setLoading] = useState(true);  const [drawn, setDrawn] = useStat
                 {currentTopScorer.tied.map((p) => (
                   <div key={p.id} style={{ flex: 1, display: 'flex', justifyContent: 'center' }}>
                     {p.cardUrl ? (
-                      <img src={p.cardUrl} alt={p.name} onClick={() => setCardModal(p)}
+                      <img src={p.cardUrl} alt={p.name} loading="lazy" onClick={() => setCardModal(p)}
                         style={{ width: '100%', height: 120, objectFit: 'contain', objectPosition: 'bottom', borderRadius: 8, cursor: 'pointer' }} />
                     ) : (
                       <div style={{ width: 80, height: 100, background: 'linear-gradient(160deg,#1c1c1c,#252525)', border: `2px solid ${RANK_COLOR[p.ranking]}`, borderRadius: 8, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
@@ -2344,7 +2345,7 @@ const [loading, setLoading] = useState(true);  const [drawn, setDrawn] = useStat
               <div style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 22, color: '#4ade80', marginTop: 8 }}>{currentTopScorer.goals} GOLS</div>
             </>
           ) : currentTopScorer?.cardUrl ? (
-            <img src={currentTopScorer.cardUrl} alt={currentTopScorer.name}
+            <img src={currentTopScorer.cardUrl} alt={currentTopScorer.name} loading="lazy"
               onClick={() => setCardModal(players.find(p => normalizeName(p.name) === normalizeName(currentTopScorer.name)))}
               style={{ width: '100%', maxHeight: 160, objectFit: 'contain', objectPosition: 'top', borderRadius: 8, cursor: 'pointer' }} />
           ) : currentTopScorer ? (
@@ -2367,7 +2368,7 @@ const [loading, setLoading] = useState(true);  const [drawn, setDrawn] = useStat
         {/* Card Líder da Tabela */}
         <div className="card" style={{ textAlign: 'center', padding: 14, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
           {liderTabela?.cardUrl ? (
-            <img src={liderTabela.cardUrl} alt={liderTabela.name} onClick={() => setCardModal(liderTabela)}
+            <img src={liderTabela.cardUrl} alt={liderTabela.name} loading="lazy" onClick={() => setCardModal(liderTabela)}
               style={{ width: '100%', maxHeight: 160, objectFit: 'contain', objectPosition: 'top', borderRadius: 8, cursor: 'pointer' }} />
           ) : liderTabela ? (
             <div style={{ width: 100, height: 130, background: 'linear-gradient(160deg,#1c1c1c,#252525)', border: `2px solid ${RANK_COLOR[liderTabela.ranking]}`, borderRadius: 8, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
@@ -2385,7 +2386,7 @@ const [loading, setLoading] = useState(true);  const [drawn, setDrawn] = useStat
         {/* Card Bola Murcha */}
         <div className="card" style={{ textAlign: 'center', padding: 14, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
           {bolaMurcha?.cardUrl ? (
-            <img src={bolaMurcha.cardUrl} alt={bolaMurcha.name} onClick={() => setCardModal(bolaMurcha)}
+            <img src={bolaMurcha.cardUrl} alt={bolaMurcha.name} loading="lazy" onClick={() => setCardModal(bolaMurcha)}
               style={{ width: '100%', maxHeight: 160, objectFit: 'contain', objectPosition: 'top', borderRadius: 8, cursor: 'pointer' }} />
           ) : bolaMurcha ? (
             <div style={{ width: 100, height: 130, background: 'linear-gradient(160deg,#1c1c1c,#252525)', border: `2px solid ${RANK_COLOR[bolaMurcha.ranking]}`, borderRadius: 8, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
@@ -2403,7 +2404,7 @@ const [loading, setLoading] = useState(true);  const [drawn, setDrawn] = useStat
         {/* Card Bola de Ouro */}
         <div className="card" style={{ textAlign: 'center', padding: 14 }}>
           {bolaDeOuro?.cardUrl ? (
-            <img src={bolaDeOuro.cardUrl} alt={bolaDeOuro.name}
+            <img src={bolaDeOuro.cardUrl} alt={bolaDeOuro.name} loading="lazy"
               onClick={() => setCardModal(bolaDeOuro)}
               style={{ width: '100%', maxHeight: 160, objectFit: 'contain', objectPosition: 'top', borderRadius: 8, cursor: 'pointer', marginBottom: 6 }} />
           ) : (
@@ -2500,6 +2501,7 @@ const [loading, setLoading] = useState(true);  const [drawn, setDrawn] = useStat
                               <img
                                 src={cardUrl}
                                 alt={p.name}
+                                loading="lazy"
                                 style={{
                                   width: 72,
                                   height: 100,
@@ -2576,6 +2578,7 @@ const [loading, setLoading] = useState(true);  const [drawn, setDrawn] = useStat
               <img
                 src={p.cardUrl}
                 alt={p.name}
+                loading="lazy"
                 onClick={() => setCardModal(p)}
                 style={{ width: 52, height: 72, objectFit: 'cover', objectPosition: 'top', borderRadius: 8, cursor: 'pointer', border: `2px solid ${RANK_COLOR[p.ranking]}` }}
               />
@@ -3019,6 +3022,15 @@ const [loading, setLoading] = useState(true);  const [drawn, setDrawn] = useStat
           </div>
           )}
 
+          {drawn && !confirmDesfazer && isAdmin && (
+            <button
+              onClick={() => { updateDrawn(drawn); alert('Sorteio salvo! ✅'); }}
+              style={{ width: '100%', marginTop: 8, background: '#0a1f0a', border: '1px solid #2d5a2d', borderRadius: 10, padding: '10px', color: '#4ade80', fontFamily: "'Barlow',sans-serif", fontWeight: 700, fontSize: 13, cursor: 'pointer', letterSpacing: 0.5 }}
+            >
+              💾 SALVAR SORTEIO
+            </button>
+          )}
+
           {/* Confirmação desfazer */}
           {confirmDesfazer && (
             <div
@@ -3215,22 +3227,32 @@ const [loading, setLoading] = useState(true);  const [drawn, setDrawn] = useStat
                               )}
                             </div>
                           )}
-                          {isAdmin && p.isPending && freeAgents.length > 0 && (
-                            <button onClick={() => setPendingPicker(pendingPicker?.pendingId === String(p.id) ? null : { teamKey: k, pendingId: String(p.id) })}
-                              style={{ background: pendingPicker?.pendingId === String(p.id) ? cfg.color + '33' : '#1a1a0a', border: `1px solid ${pendingPicker?.pendingId === String(p.id) ? cfg.color : '#3a3a1a'}`, color: cfg.color, borderRadius: 6, padding: '2px 8px', fontSize: 11, cursor: 'pointer', fontWeight: 700 }}>
-                              + Atribuir
-                            </button>
-                          )}
+                          {isAdmin && p.isPending && (() => {
+                            const allTeamIds = Object.values(drawn).flat().filter((tp: any) => !tp.isPending).map((tp: any) => tp.id);
+                            const unassigned = naLista.filter(nl => !allTeamIds.includes(nl.id));
+                            const available = [...freeAgents, ...unassigned.filter(u => !freeAgents.find((f: any) => f.id === u.id))];
+                            return available.length > 0 && (
+                              <button onClick={() => setPendingPicker(pendingPicker?.pendingId === String(p.id) ? null : { teamKey: k, pendingId: String(p.id) })}
+                                style={{ background: pendingPicker?.pendingId === String(p.id) ? cfg.color + '33' : '#1a1a0a', border: `1px solid ${pendingPicker?.pendingId === String(p.id) ? cfg.color : '#3a3a1a'}`, color: cfg.color, borderRadius: 6, padding: '2px 8px', fontSize: 11, cursor: 'pointer', fontWeight: 700 }}>
+                                + Atribuir
+                              </button>
+                            );
+                          })()}
                           {isAdmin && p.isPending && pendingPicker?.pendingId === String(p.id) && (
                             <div style={{ position: 'absolute', right: 14, top: '100%', zIndex: 10, background: '#1a1a1a', border: `1px solid ${cfg.color}44`, borderRadius: 10, padding: 10, minWidth: 180, boxShadow: '0 4px 20px rgba(0,0,0,0.7)' }}>
                               <div style={{ fontSize: 10, color: '#555', letterSpacing: 1, marginBottom: 8 }}>ESCOLHER JOGADOR</div>
-                              {freeAgents.map(fa => (
-                                <button key={fa.id} onClick={() => assignFreeAgentToTeam(fa.id, k)}
-                                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', background: '#111', border: '1px solid #2a2a2a', borderRadius: 7, padding: '6px 10px', marginBottom: 4, cursor: 'pointer', color: '#fff', fontSize: 13, fontWeight: 600 }}>
-                                  <span>{fa.name}</span>
-                                  <span style={{ color: '#555', fontSize: 11 }}>overall {avgOverall(fa)}</span>
-                                </button>
-                              ))}
+                              {(() => {
+                                const allTeamIds = Object.values(drawn).flat().filter((tp: any) => !tp.isPending).map((tp: any) => tp.id);
+                                const unassigned = naLista.filter(nl => !allTeamIds.includes(nl.id));
+                                const available = [...freeAgents, ...unassigned.filter(u => !freeAgents.find((f: any) => f.id === u.id))];
+                                return available.map((fa: any) => (
+                                  <button key={fa.id} onClick={() => assignFreeAgentToTeam(fa.id, k)}
+                                    style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', background: '#111', border: '1px solid #2a2a2a', borderRadius: 7, padding: '6px 10px', marginBottom: 4, cursor: 'pointer', color: '#fff', fontSize: 13, fontWeight: 600 }}>
+                                    <span>{fa.name}</span>
+                                    <span style={{ color: '#555', fontSize: 11 }}>overall {fa.overall ?? avgOverall(fa)}</span>
+                                  </button>
+                                ));
+                              })()}
                               <button onClick={() => setPendingPicker(null)} style={{ width: '100%', background: 'none', border: 'none', color: '#444', fontSize: 11, cursor: 'pointer', marginTop: 2 }}>Cancelar</button>
                             </div>
                           )}
@@ -4233,6 +4255,7 @@ const [loading, setLoading] = useState(true);  const [drawn, setDrawn] = useStat
           <img
             src="https://firebasestorage.googleapis.com/v0/b/fominhas-league.firebasestorage.app/o/FOMINHA%20LEAGUE%20BANNER.png?alt=media&token=91c084b6-2698-41a3-bcbf-f195daf5cd9c"
             alt="Futfominhas League"
+            loading="lazy"
             style={{ width: '100%', maxHeight: 140, display: 'block', objectFit: 'cover', objectPosition: 'center' }}
           />
         </div>

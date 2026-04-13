@@ -11,7 +11,6 @@ export default defineConfig({
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
         runtimeCaching: [
           {
-            // Cache das imagens do Firebase Storage
             urlPattern: /^https:\/\/firebasestorage\.googleapis\.com/,
             handler: 'CacheFirst',
             options: {
@@ -20,7 +19,6 @@ export default defineConfig({
             },
           },
           {
-            // Cache das fontes Google
             urlPattern: /^https:\/\/fonts\.(googleapis|gstatic)\.com/,
             handler: 'CacheFirst',
             options: {
@@ -28,18 +26,34 @@ export default defineConfig({
               expiration: { maxAgeSeconds: 60 * 60 * 24 * 365 },
             },
           },
+          {
+            urlPattern: /^https:\/\/firestore\.googleapis\.com/,
+            handler: 'NetworkFirst',
+            options: {
+              cacheName: 'firestore-cache',
+              expiration: { maxAgeSeconds: 60 * 60 * 24 },
+            },
+          },
         ],
       },
       manifest: {
         name: 'Fominhas League',
         short_name: 'Fominhas',
+        description: 'Depois das Dez FS — Gestão da Liga',
         theme_color: '#0a0a0a',
         background_color: '#0a0a0a',
         display: 'standalone',
+        orientation: 'portrait',
+        start_url: '/',
         icons: [
           {
-            src: 'https://firebasestorage.googleapis.com/v0/b/fominhas-league.firebasestorage.app/o/ChatGPT%20Image%2028%20de%20mar.%20de%202026%2C%2012_49_00.png?alt=media&token=af95c5c4-8e3a-4c12-88ab-632241979db7',
+            src: '/logo.png',
             sizes: '192x192',
+            type: 'image/png',
+          },
+          {
+            src: '/logo.png',
+            sizes: '512x512',
             type: 'image/png',
           },
         ],

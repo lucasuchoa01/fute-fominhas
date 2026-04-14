@@ -384,14 +384,14 @@ const INIT_ROUNDS = [
     id: 1,
     pairs: [
       { tA: 'vermelho', tB: 'azul', sA: '', sB: '' },
-      { tA: 'amarelo', tB: 'verde', sA: '', sB: '' },
+      { tA: 'verde', tB: 'amarelo', sA: '', sB: '' },
     ],
   },
   {
     id: 2,
     pairs: [
-      { tA: 'vermelho', tB: 'amarelo', sA: '', sB: '' },
       { tA: 'azul', tB: 'verde', sA: '', sB: '' },
+      { tA: 'amarelo', tB: 'vermelho', sA: '', sB: '' },
     ],
   },
   {
@@ -404,22 +404,22 @@ const INIT_ROUNDS = [
   {
     id: 4,
     pairs: [
-      { tA: 'azul', tB: 'vermelho', sA: '', sB: '' },
-      { tA: 'verde', tB: 'amarelo', sA: '', sB: '' },
+      { tA: 'verde', tB: 'vermelho', sA: '', sB: '' },
+      { tA: 'amarelo', tB: 'azul', sA: '', sB: '' },
     ],
   },
   {
     id: 5,
     pairs: [
-      { tA: 'amarelo', tB: 'vermelho', sA: '', sB: '' },
-      { tA: 'verde', tB: 'azul', sA: '', sB: '' },
+      { tA: 'azul', tB: 'vermelho', sA: '', sB: '' },
+      { tA: 'amarelo', tB: 'verde', sA: '', sB: '' },
     ],
   },
   {
     id: 6,
     pairs: [
-      { tA: 'verde', tB: 'vermelho', sA: '', sB: '' },
-      { tA: 'amarelo', tB: 'azul', sA: '', sB: '' },
+      { tA: 'vermelho', tB: 'amarelo', sA: '', sB: '' },
+      { tA: 'verde', tB: 'azul', sA: '', sB: '' },
     ],
   },
 ];

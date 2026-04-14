@@ -3348,16 +3348,27 @@ const [loading, setLoading] = useState(true);  const [drawn, setDrawn] = useStat
   // ── HISTORY ENTRY ────────────────────────────────────────────────────────────
   const HistoryEntry = ({ h }) => {
     const [open, setOpen] = useState(false);
+    const [confirmDel, setConfirmDel] = useState(false);
     const fmtDate = (iso) => {
       if (!iso) return '';
       const [y, m, d] = iso.split('-');
       return `${d}/${m}/${y.slice(2)}`;
     };
     const cfg = h.champTeam ? TEAMS_CFG[h.champTeam] : null;
+
+    const deleteEntry = (e) => {
+      e.stopPropagation();
+      if (!confirmDel) { setConfirmDel(true); return; }
+      const updated = matchHistory.filter(item => item.id !== h.id);
+      setMatchHistory(updated);
+      save('fm_matchHistory', updated);
+      setConfirmDel(false);
+    };
+
     return (
       <div style={{ background: '#141414', border: '1px solid #222', borderRadius: 10, marginBottom: 8, overflow: 'hidden' }}>
         <button
-          onClick={() => setOpen(o => !o)}
+          onClick={() => { setOpen(o => !o); setConfirmDel(false); }}
           style={{ width: '100%', background: 'none', border: 'none', padding: '12px 14px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}
         >
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 4 }}>
@@ -3380,6 +3391,29 @@ const [loading, setLoading] = useState(true);  const [drawn, setDrawn] = useStat
                   }}
                 >
                   EDITAR DATA
+                </button>
+              )}
+              {isAdmin && (
+                <button
+                  onClick={deleteEntry}
+                  style={{
+                    padding: '4px 8px', fontSize: 10, fontWeight: 700, cursor: 'pointer',
+                    background: confirmDel ? '#7f1d1d' : '#1a0a0a',
+                    border: `1px solid ${confirmDel ? '#ef4444' : '#3a1a1a'}`,
+                    color: confirmDel ? '#fff' : '#ef4444',
+                    borderRadius: 6, letterSpacing: 0.5,
+                    transition: 'all .2s',
+                  }}
+                >
+                  {confirmDel ? '⚠️ CONFIRMAR' : '🗑️'}
+                </button>
+              )}
+              {confirmDel && (
+                <button
+                  onClick={(e) => { e.stopPropagation(); setConfirmDel(false); }}
+                  style={{ padding: '4px 8px', fontSize: 10, fontWeight: 700, cursor: 'pointer', background: 'none', border: '1px solid #2a2a2a', color: '#555', borderRadius: 6 }}
+                >
+                  Cancelar
                 </button>
               )}
             </div>

@@ -3229,8 +3229,12 @@ const [loading, setLoading] = useState(true);  const [drawn, setDrawn] = useStat
                           )}
                           {isAdmin && p.isPending && (() => {
                             const allTeamIds = Object.values(drawn).flat().filter((tp: any) => !tp.isPending).map((tp: any) => tp.id);
-                            const unassigned = naLista.filter(nl => !allTeamIds.includes(nl.id));
-                            const available = [...freeAgents, ...unassigned.filter(u => !freeAgents.find((f: any) => f.id === u.id))];
+                            const naListaIds = new Set(naLista.map((nl: any) => nl.id));
+                            const unassigned = naLista.filter((nl: any) => !allTeamIds.includes(nl.id));
+                            const available = [
+                              ...freeAgents.filter((fa: any) => naListaIds.has(fa.id)),
+                              ...unassigned.filter((u: any) => !freeAgents.find((f: any) => f.id === u.id))
+                            ];
                             return available.length > 0 && (
                               <button onClick={() => setPendingPicker(pendingPicker?.pendingId === String(p.id) ? null : { teamKey: k, pendingId: String(p.id) })}
                                 style={{ background: pendingPicker?.pendingId === String(p.id) ? cfg.color + '33' : '#1a1a0a', border: `1px solid ${pendingPicker?.pendingId === String(p.id) ? cfg.color : '#3a3a1a'}`, color: cfg.color, borderRadius: 6, padding: '2px 8px', fontSize: 11, cursor: 'pointer', fontWeight: 700 }}>
@@ -3238,24 +3242,7 @@ const [loading, setLoading] = useState(true);  const [drawn, setDrawn] = useStat
                               </button>
                             );
                           })()}
-                          {isAdmin && p.isPending && pendingPicker?.pendingId === String(p.id) && (
-                            <div style={{ position: 'absolute', right: 14, top: '100%', zIndex: 10, background: '#1a1a1a', border: `1px solid ${cfg.color}44`, borderRadius: 10, padding: 10, minWidth: 180, boxShadow: '0 4px 20px rgba(0,0,0,0.7)' }}>
-                              <div style={{ fontSize: 10, color: '#555', letterSpacing: 1, marginBottom: 8 }}>ESCOLHER JOGADOR</div>
-                              {(() => {
-                                const allTeamIds = Object.values(drawn).flat().filter((tp: any) => !tp.isPending).map((tp: any) => tp.id);
-                                const unassigned = naLista.filter(nl => !allTeamIds.includes(nl.id));
-                                const available = [...freeAgents, ...unassigned.filter(u => !freeAgents.find((f: any) => f.id === u.id))];
-                                return available.map((fa: any) => (
-                                  <button key={fa.id} onClick={() => assignFreeAgentToTeam(fa.id, k)}
-                                    style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', background: '#111', border: '1px solid #2a2a2a', borderRadius: 7, padding: '6px 10px', marginBottom: 4, cursor: 'pointer', color: '#fff', fontSize: 13, fontWeight: 600 }}>
-                                    <span>{fa.name}</span>
-                                    <span style={{ color: '#555', fontSize: 11 }}>overall {fa.overall ?? avgOverall(fa)}</span>
-                                  </button>
-                                ));
-                              })()}
-                              <button onClick={() => setPendingPicker(null)} style={{ width: '100%', background: 'none', border: 'none', color: '#444', fontSize: 11, cursor: 'pointer', marginTop: 2 }}>Cancelar</button>
-                            </div>
-                          )}
+                          {/* picker agora é overlay fixo - ver PendingPickerOverlay abaixo */}
                         </div>
                       </div>
                     );
@@ -3288,6 +3275,47 @@ const [loading, setLoading] = useState(true);  const [drawn, setDrawn] = useStat
                 </div>
               )
           )}
+
+        {/* Picker overlay fixo */}
+        {pendingPicker && drawn && (() => {
+          const allTeamIds = Object.values(drawn).flat().filter((tp: any) => !tp.isPending).map((tp: any) => tp.id);
+          const naListaIds = new Set(naLista.map((nl: any) => nl.id));
+          const unassigned = naLista.filter((nl: any) => !allTeamIds.includes(nl.id));
+          const available = [
+            ...freeAgents.filter((fa: any) => naListaIds.has(fa.id)),
+            ...unassigned.filter((u: any) => !freeAgents.find((f: any) => f.id === u.id))
+          ];
+          const cfg = TEAMS_CFG[pendingPicker.teamKey];
+          return (
+            <div className="overlay" onClick={() => setPendingPicker(null)}>
+              <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 320 }}>
+                <div style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 18, color: cfg.color, letterSpacing: 2, marginBottom: 4 }}>
+                  {cfg.emoji} {cfg.label.toUpperCase()}
+                </div>
+                <div style={{ fontSize: 10, color: '#555', letterSpacing: 1, marginBottom: 12 }}>ESCOLHER JOGADOR</div>
+                {available.length === 0 && (
+                  <div style={{ fontSize: 13, color: '#444', fontStyle: 'italic', textAlign: 'center', padding: '12px 0' }}>
+                    Nenhum jogador disponível na lista
+                  </div>
+                )}
+                {available.map((fa: any) => (
+                  <button key={fa.id} onClick={() => { assignFreeAgentToTeam(fa.id, pendingPicker.teamKey); setPendingPicker(null); }}
+                    style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', background: '#111', border: `1px solid ${cfg.color}33`, borderRadius: 9, padding: '10px 14px', marginBottom: 6, cursor: 'pointer', color: '#fff', fontSize: 14, fontWeight: 600 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <span style={{ background: RANK_COLOR[fa.ranking] + '1a', border: `1px solid ${RANK_COLOR[fa.ranking]}55`, color: RANK_COLOR[fa.ranking], borderRadius: 5, padding: '1px 6px', fontSize: 11, fontWeight: 900 }}>{fa.ranking}</span>
+                      <span>{fa.name}</span>
+                    </div>
+                    <span style={{ color: '#555', fontSize: 12 }}>overall {fa.overall ?? avgOverall(fa)}</span>
+                  </button>
+                ))}
+                <button onClick={() => setPendingPicker(null)}
+                  style={{ width: '100%', background: 'none', border: '1px solid #2a2a2a', borderRadius: 8, color: '#555', fontSize: 13, cursor: 'pointer', padding: '9px', marginTop: 4, fontFamily: "'Barlow',sans-serif", fontWeight: 700 }}>
+                  Cancelar
+                </button>
+              </div>
+            </div>
+          );
+        })()}
 
         {drawn && freeAgents.length > 0 && (
           <div style={{ background: '#0d0d1a', border: '1px solid #2a2a5a', borderRadius: 12, padding: 14, marginTop: 4 }}>

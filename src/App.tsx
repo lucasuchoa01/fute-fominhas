@@ -2896,15 +2896,19 @@ const [loading, setLoading] = useState(true);  const [drawn, setDrawn] = useStat
       updateDrawn(balanced);
     };
     const assignFreeAgentToTeam = (agentId, teamKey) => {
-      const agent = freeAgents.find(p => p.id === agentId);
-      if (!agent || !drawn) return;
+      if (!drawn) return;
+      // Procura em freeAgents primeiro, depois em naLista (jogadores ainda não sorteados)
+      const agent = freeAgents.find(p => p.id === agentId) || naLista.find(p => p.id === agentId);
+      if (!agent) return;
       const newDrawn = {};
       Object.keys(TEAMS_CFG).forEach(tk => { newDrawn[tk] = [...(drawn[tk] || [])]; });
       const pendingIdx = newDrawn[teamKey].findIndex(p => p.isPending);
       if (pendingIdx >= 0) newDrawn[teamKey].splice(pendingIdx, 1);
       newDrawn[teamKey] = [...newDrawn[teamKey], agent];
       Object.keys(newDrawn).forEach(tk => { newDrawn[tk] = sortTeam(newDrawn[tk]); });
-      setFreeAgents(prev => prev.filter(p => p.id !== agentId)); setPendingPicker(null); updateDrawn(newDrawn);
+      setFreeAgents(prev => prev.filter(p => p.id !== agentId));
+      setPendingPicker(null);
+      updateDrawn(newDrawn);
     };
     const [movePlayer, setMovePlayer] = useState(null);
     const movePlayerBetweenTeams = (playerId, fromTeam, toTeam) => {

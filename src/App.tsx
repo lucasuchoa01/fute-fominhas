@@ -599,6 +599,8 @@ function initials(name) {
 }
 
 async function compressImage(file: File, maxWidth = 1200): Promise<Blob> {
+  const isPng = file.type === 'image/png';
+  const format = isPng ? 'image/png' : 'image/jpeg';
   return new Promise((resolve) => {
     const img = new Image();
     const url = URL.createObjectURL(file);
@@ -607,9 +609,11 @@ async function compressImage(file: File, maxWidth = 1200): Promise<Blob> {
       const canvas = document.createElement('canvas');
       canvas.width = img.width * scale;
       canvas.height = img.height * scale;
-      canvas.getContext('2d')!.drawImage(img, 0, 0, canvas.width, canvas.height);
+      const ctx = canvas.getContext('2d')!;
+      if (isPng) ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
       URL.revokeObjectURL(url);
-      canvas.toBlob((blob) => resolve(blob!), 'image/jpeg', 0.82);
+      canvas.toBlob((blob) => resolve(blob!), format, isPng ? undefined : 0.82);
     };
     img.src = url;
   });

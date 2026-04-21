@@ -1599,36 +1599,7 @@ const [loading, setLoading] = useState(true);  const [drawn, setDrawn] = useStat
     });
   };
 
-  useEffect(() => {
-    const checkReset = async () => {
-      const now = new Date();
-      if (now.getDay() !== 1 || now.getHours() < 22) return;
-      const key = now.toISOString().slice(0, 13);
-      if (lastResetAt === key) return;
-      const freshLista = {
-        date: now.toISOString().split('T')[0],
-        slots: [],
-        ausentes: [],
-      };
-      setDrawn(null);
-      setRounds(INIT_ROUNDS);
-      setFinale(INIT_FINAL);
-      setScorers({});
-      setLista(freshLista);
-      setLastResetAt(key);
-      await save('fm_drawn', null);
-      await save('fm_rounds', INIT_ROUNDS);
-      await save('fm_finale', INIT_FINAL);
-      await save('fm_scorers', {});
-      await save('fm_lista', freshLista);
-      await save('fm_lastReset', key);
-      await save('fm_appliedMatch', null);
-      setAppliedMatch(null);
-    };
-    checkReset();
-    const iv = setInterval(checkReset, 60000);
-    return () => clearInterval(iv);
-  }, [lastResetAt]);
+
 
   const paidCount = players.filter((p) => p.paid).length;
 
@@ -4506,7 +4477,7 @@ const [loading, setLoading] = useState(true);  const [drawn, setDrawn] = useStat
     const toggleColete = (pid) => {
       if (!isAdmin) return;
       const cur = coletes[pid] || { washed: false, date: '' };
-      const now = new Date().toISOString().split('T')[0];
+      const _d = new Date(); const now = `${_d.getFullYear()}-${String(_d.getMonth()+1).padStart(2,'0')}-${String(_d.getDate()).padStart(2,'0')}`;
       updateColetes({
         ...coletes,
         [pid]: { washed: !cur.washed, date: !cur.washed ? now : '' },

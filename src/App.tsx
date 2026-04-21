@@ -598,6 +598,23 @@ function initials(name) {
   return name.trim().split(' ')[0].slice(0, 3).toUpperCase();
 }
 
+async function compressImage(file: File, maxWidth = 1200): Promise<Blob> {
+  return new Promise((resolve) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      const scale = Math.min(1, maxWidth / img.width);
+      const canvas = document.createElement('canvas');
+      canvas.width = img.width * scale;
+      canvas.height = img.height * scale;
+      canvas.getContext('2d')!.drawImage(img, 0, 0, canvas.width, canvas.height);
+      URL.revokeObjectURL(url);
+      canvas.toBlob((blob) => resolve(blob!), 'image/jpeg', 0.82);
+    };
+    img.src = url;
+  });
+}
+
 function calcStandings(rounds) {
   const pts = { vermelho: 0, azul: 0, amarelo: 0, verde: 0 };
   const gf = { vermelho: 0, azul: 0, amarelo: 0, verde: 0 };
@@ -1078,7 +1095,12 @@ function ModalEdit({ editP, setEditP, setShowEdt, players, updatePlayers }) {
         {/* Card Photo Upload */}
         <label className="lbl">CARD DO JOGADOR</label>
         <div style={{ marginBottom: 10 }}>
-          {editP.cardUrl ? (
+          {editP.cardUrl === 'loading' ? (
+            <div style={{ background: '#0d0d0d', border: '1px dashed #2a5a2a', borderRadius: 10, padding: 16, textAlign: 'center', marginBottom: 8 }}>
+              <div style={{ fontSize: 20, marginBottom: 4 }}>⏳</div>
+              <div style={{ fontSize: 12, color: '#4ade80' }}>Enviando card...</div>
+            </div>
+          ) : editP.cardUrl ? (
             <div style={{ position: 'relative', marginBottom: 8 }}>
               <img src={editP.cardUrl} alt="card" style={{ width: '100%', borderRadius: 10, maxHeight: 200, objectFit: 'cover' }} />
               <button
@@ -1104,13 +1126,25 @@ function ModalEdit({ editP, setEditP, setShowEdt, players, updatePlayers }) {
               onChange={async (e) => {
                 const file = e.target.files?.[0];
                 if (!file) return;
+                const tryUpload = async (attempts = 3): Promise<string> => {
+                  try {
+                    const compressed = await compressImage(file);
+                    const storageRef = ref(storage, `cards/${editP.id}_${Date.now()}`);
+                    await uploadBytes(storageRef, compressed);
+                    return await getDownloadURL(storageRef);
+                  } catch (err) {
+                    if (attempts <= 1) throw err;
+                    await new Promise(r => setTimeout(r, 1500));
+                    return tryUpload(attempts - 1);
+                  }
+                };
                 try {
-                  const storageRef = ref(storage, `cards/${editP.id}_${Date.now()}`);
-                  await uploadBytes(storageRef, file);
-                  const url = await getDownloadURL(storageRef);
+                  set('cardUrl', 'loading');
+                  const url = await tryUpload(3);
                   set('cardUrl', url);
-                } catch (err) {
-                  alert('Erro ao fazer upload: ' + err.message);
+                } catch (err: any) {
+                  set('cardUrl', '');
+                  alert('Erro ao fazer upload após 3 tentativas: ' + err.message);
                 }
               }}
             />
@@ -1599,7 +1633,36 @@ const [loading, setLoading] = useState(true);  const [drawn, setDrawn] = useStat
     });
   };
 
-
+  useEffect(() => {
+    const checkReset = async () => {
+      const now = new Date();
+      if (now.getDay() !== 1 || now.getHours() < 22) return;
+      const key = now.toISOString().slice(0, 13);
+      if (lastResetAt === key) return;
+      const freshLista = {
+        date: now.toISOString().split('T')[0],
+        slots: [],
+        ausentes: [],
+      };
+      setDrawn(null);
+      setRounds(INIT_ROUNDS);
+      setFinale(INIT_FINAL);
+      setScorers({});
+      setLista(freshLista);
+      setLastResetAt(key);
+      await save('fm_drawn', null);
+      await save('fm_rounds', INIT_ROUNDS);
+      await save('fm_finale', INIT_FINAL);
+      await save('fm_scorers', {});
+      await save('fm_lista', freshLista);
+      await save('fm_lastReset', key);
+      await save('fm_appliedMatch', null);
+      setAppliedMatch(null);
+    };
+    checkReset();
+    const iv = setInterval(checkReset, 60000);
+    return () => clearInterval(iv);
+  }, [lastResetAt]);
 
   const paidCount = players.filter((p) => p.paid).length;
 
@@ -2184,7 +2247,12 @@ const [loading, setLoading] = useState(true);  const [drawn, setDrawn] = useStat
             border: `1px solid ${TEAMS_CFG[currentChampionTeam].color}44`,
           }}
         >
-          {champTeamPhoto ? (
+          {champTeamPhoto === 'loading' ? (
+            <div style={{ padding: 28, textAlign: 'center' }}>
+              <div style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 15, color: '#4ade80', letterSpacing: 2, marginBottom: 6 }}>⏳ ENVIANDO FOTO...</div>
+              <div style={{ fontSize: 11, color: '#555' }}>Comprimindo e fazendo upload, aguarda...</div>
+            </div>
+          ) : champTeamPhoto ? (
             <div style={{ position: 'relative' }}>
               <img
                 src={champTeamPhoto}
@@ -2243,34 +2311,62 @@ const [loading, setLoading] = useState(true);  const [drawn, setDrawn] = useStat
                   <input type="file" accept="image/*" style={{ display: 'none' }} onChange={async (e) => {
                     const file = e.target.files?.[0];
                     if (!file) return;
+                    const tryUpload = async (attempts = 3): Promise<string> => {
+                      try {
+                        const compressed = await compressImage(file);
+                        const storageRef = ref(storage, `champ_photos/${Date.now()}`);
+                        await uploadBytes(storageRef, compressed);
+                        return await getDownloadURL(storageRef);
+                      } catch (err) {
+                        if (attempts <= 1) throw err;
+                        await new Promise(r => setTimeout(r, 1500));
+                        return tryUpload(attempts - 1);
+                      }
+                    };
                     try {
-                      const storageRef = ref(storage, `champ_photos/${Date.now()}`);
-                      await uploadBytes(storageRef, file);
-                      const url = await getDownloadURL(storageRef);
+                      setChampTeamPhoto('loading');
+                      const url = await tryUpload(3);
                       setChampTeamPhoto(url);
                       const ref2 = doc(db, 'app', 'state');
                       await setDoc(ref2, { fm_champTeamPhoto: url }, { merge: true });
-                    } catch (err: any) { alert('Erro: ' + err.message); }
+                    } catch (err: any) {
+                      setChampTeamPhoto(null);
+                      alert('Erro no upload após 3 tentativas: ' + err.message);
+                    }
                   }} />
                 </label>
               )}
             </div>
           )}
-          {champTeamPhoto && isAdmin && (
+          {champTeamPhoto && champTeamPhoto !== 'loading' && isAdmin && (
             <div style={{ padding: '10px 14px' }}>
               <label style={{ display: 'block', background: '#161616', border: '1px solid #2a5a2a', borderRadius: 9, padding: '8px 16px', textAlign: 'center', color: '#4ade80', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>
                 🔄 TROCAR FOTO
                 <input type="file" accept="image/*" style={{ display: 'none' }} onChange={async (e) => {
                   const file = e.target.files?.[0];
                   if (!file) return;
+                  const tryUpload = async (attempts = 3): Promise<string> => {
+                    try {
+                      const compressed = await compressImage(file);
+                      const storageRef = ref(storage, `champ_photos/${Date.now()}`);
+                      await uploadBytes(storageRef, compressed);
+                      return await getDownloadURL(storageRef);
+                    } catch (err) {
+                      if (attempts <= 1) throw err;
+                      await new Promise(r => setTimeout(r, 1500));
+                      return tryUpload(attempts - 1);
+                    }
+                  };
                   try {
-                    const storageRef = ref(storage, `champ_photos/${Date.now()}`);
-                    await uploadBytes(storageRef, file);
-                    const url = await getDownloadURL(storageRef);
+                    setChampTeamPhoto('loading');
+                    const url = await tryUpload(3);
                     setChampTeamPhoto(url);
                     const ref2 = doc(db, 'app', 'state');
                     await setDoc(ref2, { fm_champTeamPhoto: url }, { merge: true });
-                  } catch (err: any) { alert('Erro: ' + err.message); }
+                  } catch (err: any) {
+                    setChampTeamPhoto(null);
+                    alert('Erro no upload após 3 tentativas: ' + err.message);
+                  }
                 }} />
               </label>
             </div>
@@ -4477,7 +4573,7 @@ const [loading, setLoading] = useState(true);  const [drawn, setDrawn] = useStat
     const toggleColete = (pid) => {
       if (!isAdmin) return;
       const cur = coletes[pid] || { washed: false, date: '' };
-      const _d = new Date(); const now = `${_d.getFullYear()}-${String(_d.getMonth()+1).padStart(2,'0')}-${String(_d.getDate()).padStart(2,'0')}`;
+      const now = new Date().toISOString().split('T')[0];
       updateColetes({
         ...coletes,
         [pid]: { washed: !cur.washed, date: !cur.washed ? now : '' },

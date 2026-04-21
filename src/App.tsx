@@ -2099,7 +2099,7 @@ const [loading, setLoading] = useState(true);  const [drawn, setDrawn] = useStat
     const pikinhaPlayer = currentTopScorer?.tied ? null : spotlightPlayers[0];
     const items = [
       { player: pikinhaPlayer, tied: currentTopScorer?.tied || null, name: currentTopScorer?.tied ? currentTopScorer.tied.map((p: any) => p.name).join(' / ') : (currentTopScorer?.name || '—'), sub: currentTopScorer ? currentTopScorer.goals + ' gols' : '', tag: 'PIKINHA DA NOITE', color: '#4ade80' },
-      { player: liderTabela, tied: null, name: liderTabela?.name || '—', sub: liderTabela ? liderTabela.champ + '🏆 ' + liderTabela.goals + '⚽' : '', tag: 'LÍDER DA TABELA', color: '#f59e0b' },
+      { player: liderTabela, tied: null, name: liderTabela?.name || '—', sub: liderTabela ? liderTabela.champ + '🏆 ' + liderTabela.vice + '🥈' : '', tag: 'LÍDER DA TABELA', color: '#f59e0b' },
       { player: bolaMurcha, tied: null, name: bolaMurcha?.name || '—', sub: bolaMurcha ? bolaMurcha.champ + '🏆 ' + bolaMurcha.pres + '✅' : '', tag: 'BOLA MURCHA', color: '#ef4444' },
       { player: bolaDeOuro, tied: null, name: bolaDeOuro?.name || '—', sub: bolaDeOuro ? bolaDeOuro.goals + '⚽ total' : '', tag: 'BOLA DE OURO', color: '#fbbf24' },
     ];
@@ -2450,7 +2450,7 @@ const [loading, setLoading] = useState(true);  const [drawn, setDrawn] = useStat
           <div style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: liderTabela && liderTabela.name.length > 10 ? 16 : 24, color: '#f59e0b', marginTop: 8, lineHeight: 1.1 }}>
             {liderTabela ? liderTabela.name : '—'}
           </div>
-          {liderTabela && <div style={{ fontSize: 11, color: '#f59e0b', fontWeight: 700, marginBottom: 2 }}>{liderTabela.champ} 🏆 · {liderTabela.goals} ⚽</div>}
+          {liderTabela && <div style={{ fontSize: 11, color: '#f59e0b', fontWeight: 700, marginBottom: 2 }}>{liderTabela.champ} 🏆 · {liderTabela.vice} 🥈</div>}
           <div style={{ fontSize: 10, color: '#555', letterSpacing: 1 }}>LÍDER DA TABELA</div>
         </div>
 

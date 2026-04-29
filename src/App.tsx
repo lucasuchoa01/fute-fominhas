@@ -1502,8 +1502,13 @@ const [loading, setLoading] = useState(true);  const [drawn, setDrawn] = useStat
         };
         const pl = load('fm_players');
         if (pl) setPlayers(pl);
-        const dr = load('fm_drawn');
-        if (dr) setDrawn(dr);
+        const drRaw = data['fm_drawn'];
+        if (drRaw && drRaw !== 'null') {
+          try {
+            const dr = JSON.parse(drRaw);
+            if (dr && typeof dr === 'object') setDrawn(dr);
+          } catch(e) {}
+        }
         const ac = load('fm_active');
         if (ac) setActive(ac);
         const ro = load('fm_rounds');
@@ -1555,7 +1560,12 @@ const [loading, setLoading] = useState(true);  const [drawn, setDrawn] = useStat
     try {
       const ref = doc(db, 'app', 'state');
       await setDoc(ref, { [k]: raw }, { merge: true });
-    } catch (e) { console.error('Erro ao salvar:', e); }
+    } catch (e) {
+      console.error('Erro ao salvar:', e);
+      if (k === 'fm_drawn' || k === 'fm_lista') {
+        alert('⚠️ Erro ao salvar no banco! Verifique sua conexão e tente novamente.\n\nDetalhes: ' + e.message);
+      }
+    }
   };
 
   // Helpers

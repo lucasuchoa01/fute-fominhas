@@ -1637,36 +1637,7 @@ const [loading, setLoading] = useState(true);  const [drawn, setDrawn] = useStat
     });
   };
 
-  useEffect(() => {
-    const checkReset = async () => {
-      const now = new Date();
-      if (now.getDay() !== 1 || now.getHours() < 22) return;
-      const key = now.toISOString().slice(0, 13);
-      if (lastResetAt === key) return;
-      const freshLista = {
-        date: now.toISOString().split('T')[0],
-        slots: [],
-        ausentes: [],
-      };
-      setDrawn(null);
-      setRounds(INIT_ROUNDS);
-      setFinale(INIT_FINAL);
-      setScorers({});
-      setLista(freshLista);
-      setLastResetAt(key);
-      await save('fm_drawn', null);
-      await save('fm_rounds', INIT_ROUNDS);
-      await save('fm_finale', INIT_FINAL);
-      await save('fm_scorers', {});
-      await save('fm_lista', freshLista);
-      await save('fm_lastReset', key);
-      await save('fm_appliedMatch', null);
-      setAppliedMatch(null);
-    };
-    checkReset();
-    const iv = setInterval(checkReset, 60000);
-    return () => clearInterval(iv);
-  }, [lastResetAt]);
+
 
   const paidCount = players.filter((p) => p.paid).length;
 
@@ -2251,12 +2222,7 @@ const [loading, setLoading] = useState(true);  const [drawn, setDrawn] = useStat
             border: `1px solid ${TEAMS_CFG[currentChampionTeam].color}44`,
           }}
         >
-          {champTeamPhoto === 'loading' ? (
-            <div style={{ padding: 28, textAlign: 'center' }}>
-              <div style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 15, color: '#4ade80', letterSpacing: 2, marginBottom: 6 }}>⏳ ENVIANDO FOTO...</div>
-              <div style={{ fontSize: 11, color: '#555' }}>Comprimindo e fazendo upload, aguarda...</div>
-            </div>
-          ) : champTeamPhoto ? (
+          {champTeamPhoto ? (
             <div style={{ position: 'relative' }}>
               <img
                 src={champTeamPhoto}
@@ -2342,7 +2308,7 @@ const [loading, setLoading] = useState(true);  const [drawn, setDrawn] = useStat
               )}
             </div>
           )}
-          {champTeamPhoto && champTeamPhoto !== 'loading' && isAdmin && (
+          {champTeamPhoto && isAdmin && (
             <div style={{ padding: '10px 14px' }}>
               <label style={{ display: 'block', background: '#161616', border: '1px solid #2a5a2a', borderRadius: 9, padding: '8px 16px', textAlign: 'center', color: '#4ade80', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>
                 🔄 TROCAR FOTO
@@ -4577,7 +4543,7 @@ const [loading, setLoading] = useState(true);  const [drawn, setDrawn] = useStat
     const toggleColete = (pid) => {
       if (!isAdmin) return;
       const cur = coletes[pid] || { washed: false, date: '' };
-      const now = new Date().toISOString().split('T')[0];
+      const _d = new Date(); const now = `${_d.getFullYear()}-${String(_d.getMonth()+1).padStart(2,'0')}-${String(_d.getDate()).padStart(2,'0')}`;
       updateColetes({
         ...coletes,
         [pid]: { washed: !cur.washed, date: !cur.washed ? now : '' },

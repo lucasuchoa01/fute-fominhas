@@ -34,7 +34,7 @@ const TEAMS_CFG = {
     label: 'Azulões',
     color: '#3b82f6',
     dim: '#1e3a8a',
-    emoji: '💎',
+    emoji: '🐺',
     shield: 'https://firebasestorage.googleapis.com/v0/b/fominhas-league.firebasestorage.app/o/azul%C3%B5es.png?alt=media&token=f6165ac4-01e3-4036-a716-e58e79459e7e',
   },
   amarelo: {
@@ -45,10 +45,10 @@ const TEAMS_CFG = {
     shield: 'https://firebasestorage.googleapis.com/v0/b/fominhas-league.firebasestorage.app/o/canarinhos.png?alt=media&token=632be39d-a732-45a5-96a9-4920b5cf0427',
   },
   verde: {
-    label: 'Máquina Verde',
-    color: '#22c55e',
-    dim: '#052e16',
-    emoji: '🦖',
+    label: 'All Blacks',
+    color: '#e5e5e5',
+    dim: '#1a1a1a',
+    emoji: '🦍',
     shield: 'https://firebasestorage.googleapis.com/v0/b/fominhas-league.firebasestorage.app/o/maquina%20verde.png?alt=media&token=df9161d1-1824-4662-84f4-4cc34897d8c3',
   },
 };
@@ -2232,7 +2232,12 @@ const [loading, setLoading] = useState(true);  const [drawn, setDrawn] = useStat
             border: `1px solid ${TEAMS_CFG[currentChampionTeam].color}44`,
           }}
         >
-          {champTeamPhoto ? (
+          {champTeamPhoto === 'loading' ? (
+            <div style={{ padding: 28, textAlign: 'center' }}>
+              <div style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 15, color: '#4ade80', letterSpacing: 2, marginBottom: 6 }}>⏳ ENVIANDO FOTO...</div>
+              <div style={{ fontSize: 11, color: '#555' }}>Aguarda, comprimindo e salvando...</div>
+            </div>
+          ) : champTeamPhoto ? (
             <div style={{ position: 'relative' }}>
               <img
                 src={champTeamPhoto}

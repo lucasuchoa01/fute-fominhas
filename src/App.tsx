@@ -34,7 +34,7 @@ const TEAMS_CFG = {
     label: 'Azulões',
     color: '#3b82f6',
     dim: '#1e3a8a',
-    emoji: '🐺',
+    emoji: '🐋',
     shield: 'https://firebasestorage.googleapis.com/v0/b/fominhas-league.firebasestorage.app/o/azul%C3%B5es.png?alt=media&token=f6165ac4-01e3-4036-a716-e58e79459e7e',
   },
   amarelo: {
@@ -1986,7 +1986,16 @@ const [loading, setLoading] = useState(true);  const [drawn, setDrawn] = useStat
       item.id === id ? { ...item, date: newDate } : item
     );
     setMatchHistory(updated);
-    persist('fm_match_history', updated);
+    save('fm_matchHistory', updated);
+  };
+
+  const updateMatchHistoryRound = async (id, newRound) => {
+    if (!newRound) return;
+    const updated = matchHistory.map((item) =>
+      item.id === id ? { ...item, roundNumber: Number(newRound) } : item
+    );
+    setMatchHistory(updated);
+    save('fm_matchHistory', updated);
   };
 
   const exportResumo = async () => {
@@ -3443,6 +3452,23 @@ const [loading, setLoading] = useState(true);  const [drawn, setDrawn] = useStat
                   }}
                 >
                   EDITAR DATA
+                </button>
+              )}
+              {isAdmin && (
+                <button
+                  className="btn2"
+                  style={{ padding: '4px 8px', fontSize: 10 }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    const newRound = window.prompt('Digite o número da rodada', String(h.roundNumber || ''));
+                    if (newRound && /^\d+$/.test(newRound.trim())) {
+                      updateMatchHistoryRound(h.id, newRound.trim());
+                    } else if (newRound) {
+                      alert('Número inválido.');
+                    }
+                  }}
+                >
+                  EDITAR RODADA
                 </button>
               )}
               {isAdmin && (

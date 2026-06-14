@@ -573,23 +573,23 @@ function drawTeams(active) {
 function getNextGameDate() {
   const now = new Date();
   const next = new Date(now);
-  next.setHours(22, 0, 0, 0);
+  next.setHours(20, 30, 0, 0);
 
-  if (now.getDay() === 1 && now < next) {
+  if (now.getDay() === 3 && now < next) {
     return next;
   }
 
-  const diff = (8 - now.getDay()) % 7 || 7;
+  const diff = ((3 - now.getDay() + 7) % 7) || 7;
   next.setDate(now.getDate() + diff);
-  next.setHours(22, 0, 0, 0);
+  next.setHours(20, 30, 0, 0);
   return next;
 }
 
 function getLastMondayISO(baseDate = new Date()) {
   const date = new Date(baseDate);
   date.setHours(12, 0, 0, 0);
-  const day = date.getDay(); // 0 = domingo, 1 = segunda
-  const diff = day === 0 ? 6 : day - 1;
+  const day = date.getDay(); // 0 = domingo, 3 = quarta
+  const diff = day === 3 ? 0 : (day + 4) % 7; // dias desde a última quarta
   date.setDate(date.getDate() - diff);
   return date.toISOString().split('T')[0];
 }
@@ -1816,8 +1816,8 @@ const [loading, setLoading] = useState(true);  const [drawn, setDrawn] = useStat
 
   const resetSemana = async () => {
     const hoje = new Date().getDay();
-    if (hoje !== 6 && hoje !== 0 && hoje !== 1) {
-      alert('A nova semana só pode ser iniciada a partir do Sábado! 📅');
+    if (hoje !== 4 && hoje !== 5 && hoje !== 6 && hoje !== 0 && hoje !== 3) {
+      alert('A nova semana só pode ser iniciada a partir de Quinta-feira! 📅');
       return;
     }
     if (!confirm('Zerar a semana?\n\nLista, sorteio e placares serao apagados.\nA Tabela Geral NAO sera afetada.')) return;
@@ -2222,7 +2222,7 @@ const [loading, setLoading] = useState(true);  const [drawn, setDrawn] = useStat
               whiteSpace: 'nowrap',
             }}
           >
-            ⚽ PRÓXIMO JOGO — SEG 22H
+            ⚽ PRÓXIMO JOGO — QUA 20H30
           </div>
           <Countdown />
         </div>
@@ -5286,7 +5286,7 @@ const [loading, setLoading] = useState(true);  const [drawn, setDrawn] = useStat
     const genText = () => {
       const dateStr = `${dayName(lista.date)}, ${fmtDateBR(lista.date)}`;
       let txt = `${dateStr}\n`;
-      txt += `⏱️ Jogando: 22h (CHEGAR 21h40)\n`;
+      txt += `⏱️ Jogando: 20h30 (CHEGAR 20h15)\n`;
       txt += `Presentes ✅\n`;
       txt += `⚽🏃🏽\n`;
       for (let i = 0; i < totalField; i++) {
@@ -5347,7 +5347,7 @@ const [loading, setLoading] = useState(true);  const [drawn, setDrawn] = useStat
             disabled={!isAdmin}
           />
           <div style={{ marginTop: 8, fontSize: 13, color: '#555' }}>
-            {dayName(lista.date)}, {fmtDateBR(lista.date)} — 22h00 ⏱️
+            {dayName(lista.date)}, {fmtDateBR(lista.date)} — 20h30 ⏱️
           </div>
 
           <div style={{ marginTop: 12 }}>

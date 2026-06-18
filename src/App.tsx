@@ -22,7 +22,7 @@ enableIndexedDbPersistence(db).catch((err) => {
 
 // ============ CONSTANTS ============
 
-const TEAMS_CFG = {
+const TEAMS_CFG_4 = {
   vermelho: {
     label: 'Diabos Vermelhos',
     color: '#ef4444',
@@ -44,7 +44,7 @@ const TEAMS_CFG = {
     emoji: '🐤',
     shield: 'https://firebasestorage.googleapis.com/v0/b/fominhas-league.firebasestorage.app/o/canarinhos.png?alt=media&token=632be39d-a732-45a5-96a9-4920b5cf0427',
   },
-  verde: {
+  preto: {
     label: 'All Blacks',
     color: '#e5e5e5',
     dim: '#1a1a1a',
@@ -52,6 +52,20 @@ const TEAMS_CFG = {
     shield: 'https://firebasestorage.googleapis.com/v0/b/fominhas-league.firebasestorage.app/o/maquina%20verde.png?alt=media&token=df9161d1-1824-4662-84f4-4cc34897d8c3',
   },
 };
+
+const TEAMS_CFG_5 = {
+  ...TEAMS_CFG_4,
+  verde: {
+    label: 'Duendes Verdes',
+    color: '#22c55e',
+    dim: '#052e16',
+    emoji: '🧌',
+    shield: '',
+  },
+};
+
+// Será sobrescrito dinamicamente conforme numTimes
+let TEAMS_CFG: Record<string, any> = { ...TEAMS_CFG_4 };
 
 const RANK_BORDER_COLOR: Record<string, string> = {
   A: '#f59e0b',
@@ -379,32 +393,32 @@ const INITIAL_PLAYERS = [
   },
 ];
 
-const INIT_ROUNDS = [
+const INIT_ROUNDS_4 = [
   {
     id: 1,
     pairs: [
       { tA: 'vermelho', tB: 'azul', sA: '', sB: '' },
-      { tA: 'verde', tB: 'amarelo', sA: '', sB: '' },
+      { tA: 'preto', tB: 'amarelo', sA: '', sB: '' },
     ],
   },
   {
     id: 2,
     pairs: [
-      { tA: 'azul', tB: 'verde', sA: '', sB: '' },
+      { tA: 'azul', tB: 'preto', sA: '', sB: '' },
       { tA: 'amarelo', tB: 'vermelho', sA: '', sB: '' },
     ],
   },
   {
     id: 3,
     pairs: [
-      { tA: 'vermelho', tB: 'verde', sA: '', sB: '' },
+      { tA: 'vermelho', tB: 'preto', sA: '', sB: '' },
       { tA: 'azul', tB: 'amarelo', sA: '', sB: '' },
     ],
   },
   {
     id: 4,
     pairs: [
-      { tA: 'verde', tB: 'vermelho', sA: '', sB: '' },
+      { tA: 'preto', tB: 'vermelho', sA: '', sB: '' },
       { tA: 'amarelo', tB: 'azul', sA: '', sB: '' },
     ],
   },
@@ -412,17 +426,40 @@ const INIT_ROUNDS = [
     id: 5,
     pairs: [
       { tA: 'azul', tB: 'vermelho', sA: '', sB: '' },
-      { tA: 'amarelo', tB: 'verde', sA: '', sB: '' },
+      { tA: 'amarelo', tB: 'preto', sA: '', sB: '' },
     ],
   },
   {
     id: 6,
     pairs: [
       { tA: 'vermelho', tB: 'amarelo', sA: '', sB: '' },
-      { tA: 'verde', tB: 'azul', sA: '', sB: '' },
+      { tA: 'preto', tB: 'azul', sA: '', sB: '' },
     ],
   },
 ];
+
+// 1º TURNO: 10 jogos | 2º TURNO (VOLTA): 5 jogos
+const INIT_ROUNDS_5 = [
+  // ── 1º TURNO ──
+  { id: 1,  turno: 1, pairs: [{ tA: 'azul',     tB: 'vermelho', sA: '', sB: '' }] },
+  { id: 2,  turno: 1, pairs: [{ tA: 'preto',    tB: 'amarelo',  sA: '', sB: '' }] },
+  { id: 3,  turno: 1, pairs: [{ tA: 'verde',    tB: 'azul',     sA: '', sB: '' }] },
+  { id: 4,  turno: 1, pairs: [{ tA: 'vermelho', tB: 'preto',    sA: '', sB: '' }] },
+  { id: 5,  turno: 1, pairs: [{ tA: 'amarelo',  tB: 'verde',    sA: '', sB: '' }] },
+  { id: 6,  turno: 1, pairs: [{ tA: 'azul',     tB: 'preto',    sA: '', sB: '' }] },
+  { id: 7,  turno: 1, pairs: [{ tA: 'vermelho', tB: 'amarelo',  sA: '', sB: '' }] },
+  { id: 8,  turno: 1, pairs: [{ tA: 'verde',    tB: 'preto',    sA: '', sB: '' }] },
+  { id: 9,  turno: 1, pairs: [{ tA: 'azul',     tB: 'amarelo',  sA: '', sB: '' }] },
+  { id: 10, turno: 1, pairs: [{ tA: 'vermelho', tB: 'verde',    sA: '', sB: '' }] },
+  // ── 2º TURNO (VOLTA) ──
+  { id: 11, turno: 2, pairs: [{ tA: 'amarelo',  tB: 'preto',    sA: '', sB: '' }] },
+  { id: 12, turno: 2, pairs: [{ tA: 'vermelho', tB: 'azul',     sA: '', sB: '' }] },
+  { id: 13, turno: 2, pairs: [{ tA: 'verde',    tB: 'amarelo',  sA: '', sB: '' }] },
+  { id: 14, turno: 2, pairs: [{ tA: 'preto',    tB: 'vermelho', sA: '', sB: '' }] },
+  { id: 15, turno: 2, pairs: [{ tA: 'verde',    tB: 'azul',     sA: '', sB: '' }] },
+];
+
+const INIT_ROUNDS = INIT_ROUNDS_4; // default
 
 const INIT_FINAL = { tA: 'vermelho', tB: 'azul', sA: '', sB: '' };
 
@@ -554,10 +591,12 @@ function fillPendingSlots(teams, basePlayers) {
   return teams;
 }
 
-function drawTeams(active) {
-  const realPlayers = active.slice(0, TEAM_SIZE * 4);
-  const keys = ['vermelho', 'azul', 'amarelo', 'verde'];
-  const teams = { vermelho: [], azul: [], amarelo: [], verde: [] };
+function drawTeams(active, cfg = TEAMS_CFG) {
+  const keys = Object.keys(cfg);
+  const totalSlots = TEAM_SIZE * keys.length;
+  const realPlayers = active.slice(0, totalSlots);
+  const teams: Record<string, any[]> = {};
+  keys.forEach(k => { teams[k] = []; });
   const randomized = shuffleArray(realPlayers).sort((a, b) => {
     return (RANK_VAL[b.ranking] || 0) - (RANK_VAL[a.ranking] || 0);
   });
@@ -619,15 +658,19 @@ async function compressImage(file: File, maxWidth = 1200): Promise<Blob> {
   });
 }
 
-function calcStandings(rounds) {
-  const pts = { vermelho: 0, azul: 0, amarelo: 0, verde: 0 };
-  const gf = { vermelho: 0, azul: 0, amarelo: 0, verde: 0 };
-  const gc = { vermelho: 0, azul: 0, amarelo: 0, verde: 0 };
+function calcStandings(rounds, teamKeys?: string[]) {
+  const keys = teamKeys || Object.keys(TEAMS_CFG);
+  const pts: Record<string, number> = {};
+  const gf: Record<string, number> = {};
+  const gc: Record<string, number> = {};
+  keys.forEach(k => { pts[k] = 0; gf[k] = 0; gc[k] = 0; });
   rounds.forEach((r) =>
     r.pairs.forEach((p) => {
       const a = parseInt(p.sA),
         b = parseInt(p.sB);
       if (isNaN(a) || isNaN(b)) return;
+      if (!(p.tA in pts)) { pts[p.tA] = 0; gf[p.tA] = 0; gc[p.tA] = 0; }
+      if (!(p.tB in pts)) { pts[p.tB] = 0; gf[p.tB] = 0; gc[p.tB] = 0; }
       gf[p.tA] += a;
       gc[p.tA] += b;
       gf[p.tB] += b;
@@ -1432,7 +1475,9 @@ function ModalEdit({ editP, setEditP, setShowEdt, players, updatePlayers }) {
 export default function App() {
   const [tab, setTab] = useState('inicio');
 const [players, setPlayers] = useState([]);
-const [loading, setLoading] = useState(true);  const [drawn, setDrawn] = useState(null);
+const [loading, setLoading] = useState(true);
+  const [numTimes, setNumTimes] = useState(4); // 4 ou 5
+  const [drawn, setDrawn] = useState(null);
   const [active, setActive] = useState(INITIAL_PLAYERS.map((p) => p.id));
   const [rounds, setRounds] = useState(INIT_ROUNDS);
   const [finale, setFinale] = useState(INIT_FINAL);
@@ -1488,6 +1533,8 @@ const [loading, setLoading] = useState(true);  const [drawn, setDrawn] = useStat
 
   // Sync TEAM_SIZE global with state
   TEAM_SIZE = teamSize;
+  // Sync TEAMS_CFG global com numTimes
+  TEAMS_CFG = numTimes === 5 ? { ...TEAMS_CFG_5 } : { ...TEAMS_CFG_4 };
 
   // Load storage
   useEffect(() => {
@@ -1537,6 +1584,8 @@ const [loading, setLoading] = useState(true);  const [drawn, setDrawn] = useStat
         if (cs) setCaixaSubTab(cs);
         const ts = load('fm_teamSize');
         if (ts) { setTeamSize(ts); TEAM_SIZE = ts; }
+        const nt = load('fm_numTimes');
+        if (nt) setNumTimes(nt);
         const mh = load('fm_matchHistory');
         if (mh) {
           // Dedup by date, keep first occurrence (most recent save)
@@ -1577,7 +1626,7 @@ const [loading, setLoading] = useState(true);  const [drawn, setDrawn] = useStat
     setRounds(v);
     save('fm_rounds', v);
     if (!finale.sA && !finale.sB) {
-      const st = calcStandings(v);
+      const st = calcStandings(v, Object.keys(TEAMS_CFG));
       if (st.length >= 2) {
         const newFinale = { ...finale, tA: st[0].team, tB: st[1].team };
         setFinale(newFinale);
@@ -1821,15 +1870,16 @@ const [loading, setLoading] = useState(true);  const [drawn, setDrawn] = useStat
       return;
     }
     if (!confirm('Zerar a semana?\n\nLista, sorteio e placares serao apagados.\nA Tabela Geral NAO sera afetada.')) return;
+    const freshRounds = numTimes === 5 ? INIT_ROUNDS_5 : INIT_ROUNDS_4;
     const freshLista = {
       date: getLastMondayISO(),
       rodada: String(matchHistory.length + 1),
       slots: [],
       ausentes: [],
     };
-    setDrawn(null); setRounds(INIT_ROUNDS); setFinale(INIT_FINAL);
+    setDrawn(null); setRounds(freshRounds); setFinale(INIT_FINAL);
     setScorers({}); setLista(freshLista); setAppliedMatch(null); setChampTeamPhoto(null);
-    await save('fm_drawn', null); await save('fm_rounds', INIT_ROUNDS);
+    await save('fm_drawn', null); await save('fm_rounds', freshRounds);
     await save('fm_finale', INIT_FINAL); await save('fm_scorers', {});
     await save('fm_lista', freshLista); await save('fm_appliedMatch', null);
     const ref2 = doc(db, 'app', 'state'); await setDoc(ref2, { fm_champTeamPhoto: null }, { merge: true });
@@ -2940,7 +2990,7 @@ const [loading, setLoading] = useState(true);  const [drawn, setDrawn] = useStat
     };
     const doShuffle = () => {
       if (naLista.length < TEAM_SIZE) { alert(`Adicione pelo menos ${TEAM_SIZE} jogadores na Lista antes de sortear!`); return; }
-      const t = drawTeams(naLista);
+      const t = drawTeams(naLista, TEAMS_CFG);
       Object.keys(t).forEach(tk => { t[tk] = sortTeam(t[tk]); });
       updateDrawn(t); setFreeAgents([]); setPendingPicker(null); setConfirmDesfazer(false);
     };
@@ -3539,7 +3589,7 @@ const [loading, setLoading] = useState(true);  const [drawn, setDrawn] = useStat
 
   // ── PARTIDA ──────────────────────────────────────────────────────────────────
   const TabPartida = () => {
-    const standings = calcStandings(rounds);
+    const standings = calcStandings(rounds, Object.keys(TEAMS_CFG));
     const listedPlayers = players.filter((p) =>
       lista.slots.some((s) => normalizeName(s.name) === normalizeName(p.name))
     );
@@ -3565,209 +3615,145 @@ const [loading, setLoading] = useState(true);  const [drawn, setDrawn] = useStat
         updateFinale({ ...finale, [side]: value });
       });
     };
-    return (
-      <div>
+
+    // Renderiza um par de times (usado tanto no modo 4 quanto no 5)
+    const renderPair = (pair, ri, pi) => {
+      const cA = TEAMS_CFG[pair.tA], cB = TEAMS_CFG[pair.tB];
+      if (!cA || !cB) return null;
+      return (
         <div
+          key={pi}
           style={{
-            display: 'flex',
-            justifyContent: 'space-between',
+            display: 'grid',
+            gridTemplateColumns: '1fr auto 1fr',
             alignItems: 'center',
-            marginBottom: 14,
+            gap: 8,
+            padding: pi > 0 ? '10px 0 0' : '0 0 0',
+            borderTop: pi > 0 ? '1px solid #1a1a1a' : 'none',
           }}
         >
-          <div className="stitle" style={{ margin: 0 }}>
-            FOMINHAS LEAGUE
+          <div style={{ textAlign: 'right' }}>
+            <span style={{ color: cA.color, fontWeight: 700, fontSize: 13 }}>
+              {cA.emoji} {cA.label}
+            </span>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            {appliedMatch && (
-              <span
-                style={{
-                  fontSize: 10,
-                  color: '#22c55e',
-                  fontWeight: 700,
-                  letterSpacing: 1,
-                }}
-              >
-                SALVO
-              </span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+            {isAdmin ? (
+              <>
+                <input inputMode="numeric" pattern="[0-9]*" type="text" className="sco"
+                  value={pair.sA ?? ''} style={{ borderColor: cA.color + '66' }}
+                  onWheel={(e) => e.currentTarget.blur()}
+                  onChange={(e) => setRoundScore(ri, pi, 'sA', e.target.value)} />
+                <span style={{ color: '#333', fontFamily: "'Bebas Neue',sans-serif", fontSize: 18 }}>×</span>
+                <input inputMode="numeric" pattern="[0-9]*" type="text" className="sco"
+                  value={pair.sB ?? ''} style={{ borderColor: cB.color + '66' }}
+                  onWheel={(e) => e.currentTarget.blur()}
+                  onChange={(e) => setRoundScore(ri, pi, 'sB', e.target.value)} />
+              </>
+            ) : (
+              <>
+                <span style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 30, color: cA.color }}>
+                  {pair.sA !== '' ? pair.sA : '-'}
+                </span>
+                <span style={{ color: '#333', fontSize: 16 }}>×</span>
+                <span style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 30, color: cB.color }}>
+                  {pair.sB !== '' ? pair.sB : '-'}
+                </span>
+              </>
             )}
-            {isAdmin && (
-              <span
-                style={{
-                  fontSize: 10,
-                  color: '#4ade80',
-                  fontWeight: 700,
-                  letterSpacing: 1,
-                }}
-              >
-                MODO ADMIN
-              </span>
-            )}
+          </div>
+          <div style={{ textAlign: 'left' }}>
+            <span style={{ color: cB.color, fontWeight: 700, fontSize: 13 }}>
+              {cB.emoji} {cB.label}
+            </span>
           </div>
         </div>
+      );
+    };
 
-        <div
-          style={{
-            fontSize: 10,
-            color: '#444',
-            letterSpacing: 1,
-            marginBottom: 12,
-            background: '#141414',
-            padding: '6px 12px',
-            borderRadius: 6,
-          }}
-        >
+    // Renderização das rodadas no modo 5 times (jogos individuais com separação de turno)
+    const renderRounds5 = () => {
+      const turno1 = rounds.filter(r => r.turno === 1);
+      const turno2 = rounds.filter(r => r.turno === 2);
+      return (
+        <>
+          {/* 1º TURNO */}
+          <div style={{ fontSize: 10, color: '#f59e0b', letterSpacing: 1, margin: '8px 0 10px', background: '#1a1200', padding: '6px 12px', borderRadius: 6, fontWeight: 700 }}>
+            ⚡ 1º TURNO ({turno1.length} jogos)
+          </div>
+          {turno1.map((r, ri) => (
+            <div key={r.id} className="card" style={{ marginBottom: 6, padding: '10px 12px' }}>
+              <div style={{ fontSize: 10, color: '#555', fontWeight: 700, letterSpacing: 1, marginBottom: 8 }}>
+                JOGO {r.id}
+              </div>
+              {r.pairs.map((pair, pi) => renderPair(pair, rounds.indexOf(r), pi))}
+            </div>
+          ))}
+
+          {/* 2º TURNO */}
+          <div style={{ fontSize: 10, color: '#818cf8', letterSpacing: 1, margin: '12px 0 10px', background: '#0d0d1a', padding: '6px 12px', borderRadius: 6, fontWeight: 700 }}>
+            🔄 2º TURNO — VOLTA ({turno2.length} jogos)
+          </div>
+          {turno2.map((r, ri) => (
+            <div key={r.id} className="card" style={{ marginBottom: 6, padding: '10px 12px' }}>
+              <div style={{ fontSize: 10, color: '#555', fontWeight: 700, letterSpacing: 1, marginBottom: 8 }}>
+                JOGO {r.id}
+              </div>
+              {r.pairs.map((pair, pi) => renderPair(pair, rounds.indexOf(r), pi))}
+            </div>
+          ))}
+        </>
+      );
+    };
+
+    // Renderização das rodadas no modo 4 times (formato original)
+    const renderRounds4 = () => (
+      <>
+        <div style={{ fontSize: 10, color: '#444', letterSpacing: 1, marginBottom: 12, background: '#141414', padding: '6px 12px', borderRadius: 6 }}>
           FASE DE GRUPOS
         </div>
-
         {rounds.map((r, ri) => (
-          <div
-            key={r.id}
-            className="card"
-            style={{ marginBottom: 8, padding: 12 }}
-          >
-            <div
-              style={{
-                fontSize: 11,
-                color: '#555',
-                fontWeight: 700,
-                letterSpacing: 1,
-                marginBottom: 10,
-              }}
-            >
+          <div key={r.id} className="card" style={{ marginBottom: 8, padding: 12 }}>
+            <div style={{ fontSize: 11, color: '#555', fontWeight: 700, letterSpacing: 1, marginBottom: 10 }}>
               RODADA {r.id}
             </div>
-            {r.pairs.map((pair, pi) => {
-              const cA = TEAMS_CFG[pair.tA],
-                cB = TEAMS_CFG[pair.tB];
-              return (
-                <div
-                  key={pi}
-                  style={{
-                    display: 'grid',
-                    gridTemplateColumns: '1fr auto 1fr',
-                    alignItems: 'center',
-                    gap: 8,
-                    padding: pi > 0 ? '10px 0 0' : '0 0 0',
-                    borderTop: pi > 0 ? '1px solid #1a1a1a' : 'none',
-                  }}
-                >
-                  <div style={{ textAlign: 'right' }}>
-                    <span
-                      style={{ color: cA.color, fontWeight: 700, fontSize: 13 }}
-                    >
-                      {cA.emoji} {cA.label}
-                    </span>
-                  </div>
-                  <div
-                    style={{ display: 'flex', alignItems: 'center', gap: 5 }}
-                  >
-                    {isAdmin ? (
-                      <>
-                        <input
-                          inputMode="numeric"
-                          pattern="[0-9]*"
-                          type="text"
-                          className="sco"
-                          value={pair.sA ?? ''}
-                          style={{ borderColor: cA.color + '66' }}
-                          onWheel={(e) => e.currentTarget.blur()}
-                          onChange={(e) =>
-                            setRoundScore(ri, pi, 'sA', e.target.value)
-                          }
-                        />
-                        <span
-                          style={{
-                            color: '#333',
-                            fontFamily: "'Bebas Neue',sans-serif",
-                            fontSize: 18,
-                          }}
-                        >
-                          ×
-                        </span>
-                        <input
-                          inputMode="numeric"
-                          pattern="[0-9]*"
-                          type="text"
-                          className="sco"
-                          value={pair.sB ?? ''}
-                          style={{ borderColor: cB.color + '66' }}
-                          onWheel={(e) => e.currentTarget.blur()}
-                          onChange={(e) =>
-                            setRoundScore(ri, pi, 'sB', e.target.value)
-                          }
-                        />
-                      </>
-                    ) : (
-                      <>
-                        <span
-                          style={{
-                            fontFamily: "'Bebas Neue',sans-serif",
-                            fontSize: 30,
-                            color: cA.color,
-                          }}
-                        >
-                          {pair.sA !== '' ? pair.sA : '-'}
-                        </span>
-                        <span style={{ color: '#333', fontSize: 16 }}>×</span>
-                        <span
-                          style={{
-                            fontFamily: "'Bebas Neue',sans-serif",
-                            fontSize: 30,
-                            color: cB.color,
-                          }}
-                        >
-                          {pair.sB !== '' ? pair.sB : '-'}
-                        </span>
-                      </>
-                    )}
-                  </div>
-                  <div style={{ textAlign: 'left' }}>
-                    <span
-                      style={{ color: cB.color, fontWeight: 700, fontSize: 13 }}
-                    >
-                      {cB.emoji} {cB.label}
-                    </span>
-                  </div>
-                </div>
-              );
-            })}
+            {r.pairs.map((pair, pi) => renderPair(pair, ri, pi))}
           </div>
         ))}
+      </>
+    );
+
+    return (
+      <div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+          <div className="stitle" style={{ margin: 0 }}>FOMINHAS LEAGUE</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            {/* Badge modo */}
+            <span style={{ fontSize: 10, color: numTimes === 5 ? '#22c55e' : '#4ade80', background: numTimes === 5 ? '#052e16' : '#0d1f0d', border: `1px solid ${numTimes === 5 ? '#22c55e44' : '#2d5a2d'}`, borderRadius: 6, padding: '2px 8px', fontWeight: 700, letterSpacing: 0.5 }}>
+              {numTimes} TIMES
+            </span>
+            {appliedMatch && (
+              <span style={{ fontSize: 10, color: '#22c55e', fontWeight: 700, letterSpacing: 1 }}>SALVO</span>
+            )}
+            {isAdmin && (
+              <span style={{ fontSize: 10, color: '#4ade80', fontWeight: 700, letterSpacing: 1 }}>MODO ADMIN</span>
+            )}
+          </div>
+        </div>
+
+        {/* Rodadas conforme modo */}
+        {numTimes === 5 ? renderRounds5() : renderRounds4()}
 
         {/* Classificação */}
-        <div
-          style={{
-            fontSize: 10,
-            color: '#444',
-            letterSpacing: 1,
-            margin: '8px 0 10px',
-            background: '#141414',
-            padding: '6px 12px',
-            borderRadius: 6,
-          }}
-        >
+        <div style={{ fontSize: 10, color: '#444', letterSpacing: 1, margin: '8px 0 10px', background: '#141414', padding: '6px 12px', borderRadius: 6 }}>
           CLASSIFICAÇÃO
         </div>
         <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-          <table
-            style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}
-          >
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
             <thead>
               <tr>
                 {['#', 'TIME', 'PTS', 'GF', 'GC', 'SG'].map((h) => (
-                  <th
-                    key={h}
-                    style={{
-                      background: '#1a1a1a',
-                      padding: '8px 6px',
-                      textAlign: 'center',
-                      fontSize: 9,
-                      color: '#555',
-                      letterSpacing: 1,
-                      fontWeight: 700,
-                    }}
-                  >
+                  <th key={h} style={{ background: '#1a1a1a', padding: '8px 6px', textAlign: 'center', fontSize: 9, color: '#555', letterSpacing: 1, fontWeight: 700 }}>
                     {h}
                   </th>
                 ))}
@@ -3776,71 +3762,24 @@ const [loading, setLoading] = useState(true);  const [drawn, setDrawn] = useStat
             <tbody>
               {standings.map((s, i) => {
                 const cfg = TEAMS_CFG[s.team];
+                if (!cfg) return null;
                 return (
                   <tr key={s.team}>
-                    <td
-                      style={{
-                        padding: '9px 6px',
-                        textAlign: 'center',
-                        color:
-                          i === 0 ? '#f59e0b' : i === 1 ? '#94a3b8' : '#555',
-                        fontWeight: 700,
-                      }}
-                    >
+                    <td style={{ padding: '9px 6px', textAlign: 'center', color: i === 0 ? '#f59e0b' : i === 1 ? '#94a3b8' : '#555', fontWeight: 700 }}>
                       {i + 1}
                     </td>
                     <td style={{ padding: '9px 6px', textAlign: 'center' }}>
-                      <span
-                        style={{
-                          color: cfg.color,
-                          fontWeight: 700,
-                          fontSize: 11,
-                        }}
-                      >
+                      <span style={{ color: cfg.color, fontWeight: 700, fontSize: 11 }}>
                         {cfg.emoji} {cfg.label}
                       </span>
                     </td>
-                    <td
-                      style={{
-                        padding: '9px 6px',
-                        textAlign: 'center',
-                        color: '#f0f0f0',
-                        fontFamily: "'Bebas Neue',sans-serif",
-                        fontSize: 16,
-                        fontWeight: 700,
-                      }}
-                    >
+                    <td style={{ padding: '9px 6px', textAlign: 'center', color: '#f0f0f0', fontFamily: "'Bebas Neue',sans-serif", fontSize: 16, fontWeight: 700 }}>
                       {s.pts}
                     </td>
-                    <td
-                      style={{
-                        padding: '9px 6px',
-                        textAlign: 'center',
-                        color: '#4ade80',
-                      }}
-                    >
-                      {s.gf}
-                    </td>
-                    <td
-                      style={{
-                        padding: '9px 6px',
-                        textAlign: 'center',
-                        color: '#ef4444',
-                      }}
-                    >
-                      {s.gc}
-                    </td>
-                    <td
-                      style={{
-                        padding: '9px 6px',
-                        textAlign: 'center',
-                        color:
-                          s.sg > 0 ? '#4ade80' : s.sg < 0 ? '#ef4444' : '#555',
-                        fontWeight: 700,
-                      }}
-                    >
-                      {s.sg > 0 ? '+' : ''}
-                      {s.sg}
+                    <td style={{ padding: '9px 6px', textAlign: 'center', color: '#4ade80' }}>{s.gf}</td>
+                    <td style={{ padding: '9px 6px', textAlign: 'center', color: '#ef4444' }}>{s.gc}</td>
+                    <td style={{ padding: '9px 6px', textAlign: 'center', color: s.sg > 0 ? '#4ade80' : s.sg < 0 ? '#ef4444' : '#555', fontWeight: 700 }}>
+                      {s.sg > 0 ? '+' : ''}{s.sg}
                     </td>
                   </tr>
                 );
@@ -3850,61 +3789,21 @@ const [loading, setLoading] = useState(true);  const [drawn, setDrawn] = useStat
         </div>
 
         {/* Final */}
-        <div
-          style={{
-            background: 'linear-gradient(135deg,#1a1200,#2a1e00)',
-            border: '1px solid #f59e0b33',
-            borderRadius: 12,
-            padding: 16,
-            marginTop: 8,
-          }}
-        >
-          <div
-            style={{
-              fontFamily: "'Bebas Neue',sans-serif",
-              fontSize: 15,
-              color: '#f59e0b',
-              letterSpacing: 2,
-              textAlign: 'center',
-              marginBottom: 12,
-            }}
-          >
+        <div style={{ background: 'linear-gradient(135deg,#1a1200,#2a1e00)', border: '1px solid #f59e0b33', borderRadius: 12, padding: 16, marginTop: 8 }}>
+          <div style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 15, color: '#f59e0b', letterSpacing: 2, textAlign: 'center', marginBottom: 12 }}>
             🏆 GRANDE FINAL
           </div>
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: '1fr auto 1fr',
-              alignItems: 'center',
-              gap: 8,
-            }}
-          >
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'center', gap: 8 }}>
             <div style={{ textAlign: 'right' }}>
               {isAdmin ? (
-                <select
-                  className="sel"
-                  style={{ marginBottom: 0, textAlign: 'center' }}
-                  value={finale.tA}
-                  onChange={(e) =>
-                    preserveContentScroll(() =>
-                      updateFinale({ ...finale, tA: e.target.value })
-                    )
-                  }
-                >
+                <select className="sel" style={{ marginBottom: 0, textAlign: 'center' }} value={finale.tA}
+                  onChange={(e) => preserveContentScroll(() => updateFinale({ ...finale, tA: e.target.value }))}>
                   {Object.entries(TEAMS_CFG).map(([k, c]) => (
-                    <option key={k} value={k}>
-                      {c.label}
-                    </option>
+                    <option key={k} value={k}>{c.label}</option>
                   ))}
                 </select>
               ) : (
-                <span
-                  style={{
-                    color: TEAMS_CFG[finale.tA]?.color,
-                    fontWeight: 700,
-                    fontSize: 14,
-                  }}
-                >
+                <span style={{ color: TEAMS_CFG[finale.tA]?.color, fontWeight: 700, fontSize: 14 }}>
                   {TEAMS_CFG[finale.tA]?.emoji} {TEAMS_CFG[finale.tA]?.label}
                 </span>
               )}
@@ -3912,55 +3811,23 @@ const [loading, setLoading] = useState(true);  const [drawn, setDrawn] = useStat
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
               {isAdmin ? (
                 <>
-                  <input
-                    inputMode="numeric"
-                    pattern="[0-9]*"
-                    type="text"
-                    className="sco"
-                    value={finale.sA ?? ''}
-                    style={{ borderColor: '#f59e0b55' }}
+                  <input inputMode="numeric" pattern="[0-9]*" type="text" className="sco"
+                    value={finale.sA ?? ''} style={{ borderColor: '#f59e0b55' }}
                     onWheel={(e) => e.currentTarget.blur()}
-                    onChange={(e) => setFinalScore('sA', e.target.value)}
-                  />
-                  <span
-                    style={{
-                      color: '#444',
-                      fontFamily: "'Bebas Neue',sans-serif",
-                      fontSize: 18,
-                    }}
-                  >
-                    ×
-                  </span>
-                  <input
-                    inputMode="numeric"
-                    pattern="[0-9]*"
-                    type="text"
-                    className="sco"
-                    value={finale.sB ?? ''}
-                    style={{ borderColor: '#f59e0b55' }}
+                    onChange={(e) => setFinalScore('sA', e.target.value)} />
+                  <span style={{ color: '#444', fontFamily: "'Bebas Neue',sans-serif", fontSize: 18 }}>×</span>
+                  <input inputMode="numeric" pattern="[0-9]*" type="text" className="sco"
+                    value={finale.sB ?? ''} style={{ borderColor: '#f59e0b55' }}
                     onWheel={(e) => e.currentTarget.blur()}
-                    onChange={(e) => setFinalScore('sB', e.target.value)}
-                  />
+                    onChange={(e) => setFinalScore('sB', e.target.value)} />
                 </>
               ) : (
                 <>
-                  <span
-                    style={{
-                      fontFamily: "'Bebas Neue',sans-serif",
-                      fontSize: 30,
-                      color: '#f59e0b',
-                    }}
-                  >
+                  <span style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 30, color: '#f59e0b' }}>
                     {finale.sA !== '' ? finale.sA : '-'}
                   </span>
                   <span style={{ color: '#333', fontSize: 16 }}>×</span>
-                  <span
-                    style={{
-                      fontFamily: "'Bebas Neue',sans-serif",
-                      fontSize: 30,
-                      color: '#f59e0b',
-                    }}
-                  >
+                  <span style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 30, color: '#f59e0b' }}>
                     {finale.sB !== '' ? finale.sB : '-'}
                   </span>
                 </>
@@ -3968,30 +3835,14 @@ const [loading, setLoading] = useState(true);  const [drawn, setDrawn] = useStat
             </div>
             <div style={{ textAlign: 'left' }}>
               {isAdmin ? (
-                <select
-                  className="sel"
-                  style={{ marginBottom: 0 }}
-                  value={finale.tB}
-                  onChange={(e) =>
-                    preserveContentScroll(() =>
-                      updateFinale({ ...finale, tB: e.target.value })
-                    )
-                  }
-                >
+                <select className="sel" style={{ marginBottom: 0 }} value={finale.tB}
+                  onChange={(e) => preserveContentScroll(() => updateFinale({ ...finale, tB: e.target.value }))}>
                   {Object.entries(TEAMS_CFG).map(([k, c]) => (
-                    <option key={k} value={k}>
-                      {c.label}
-                    </option>
+                    <option key={k} value={k}>{c.label}</option>
                   ))}
                 </select>
               ) : (
-                <span
-                  style={{
-                    color: TEAMS_CFG[finale.tB]?.color,
-                    fontWeight: 700,
-                    fontSize: 14,
-                  }}
-                >
+                <span style={{ color: TEAMS_CFG[finale.tB]?.color, fontWeight: 700, fontSize: 14 }}>
                   {TEAMS_CFG[finale.tB]?.emoji} {TEAMS_CFG[finale.tB]?.label}
                 </span>
               )}
@@ -4002,11 +3853,9 @@ const [loading, setLoading] = useState(true);  const [drawn, setDrawn] = useStat
         {/* Salvar + Nova Semana */}
         {isAdmin && (
           <div style={{ margin: '16px 0 4px' }}>
-            <button
-              className="btn"
+            <button className="btn"
               style={{ background: appliedMatch ? 'linear-gradient(135deg,#064e3b,#059669)' : 'linear-gradient(135deg,#7c2d12,#ea580c)', marginBottom: 6 }}
-              onClick={saveMatchResults}
-            >
+              onClick={saveMatchResults}>
               {appliedMatch ? '✅ PARTIDA SALVA — ATUALIZAR' : '💾 SALVAR PARTIDA E ATUALIZAR TABELA'}
             </button>
             {appliedMatch && (
@@ -4014,10 +3863,8 @@ const [loading, setLoading] = useState(true);  const [drawn, setDrawn] = useStat
                 Salvo em {new Date(appliedMatch.savedAt).toLocaleString('pt-BR')}
               </div>
             )}
-            <button
-              onClick={resetSemana}
-              style={{ width: '100%', background: 'none', border: '1px solid #3a1a1a', borderRadius: 10, color: '#ef4444', padding: '10px', fontFamily: "'Barlow',sans-serif", fontWeight: 700, fontSize: 13, cursor: 'pointer', letterSpacing: 0.5 }}
-            >
+            <button onClick={resetSemana}
+              style={{ width: '100%', background: 'none', border: '1px solid #3a1a1a', borderRadius: 10, color: '#ef4444', padding: '10px', fontFamily: "'Barlow',sans-serif", fontWeight: 700, fontSize: 13, cursor: 'pointer', letterSpacing: 0.5 }}>
               🔄 NOVA SEMANA (zerar lista, sorteio e placares)
             </button>
           </div>
@@ -4025,10 +3872,8 @@ const [loading, setLoading] = useState(true);  const [drawn, setDrawn] = useStat
 
         {/* Histórico */}
         <div style={{ marginBottom: 12 }}>
-          <button
-            onClick={() => setShowHistory(h => !h)}
-            style={{ width: '100%', background: '#141414', border: '1px solid #2a2a2a', borderRadius: 10, color: '#888', padding: '10px', fontFamily: "'Barlow',sans-serif", fontWeight: 700, fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
-          >
+          <button onClick={() => setShowHistory(h => !h)}
+            style={{ width: '100%', background: '#141414', border: '1px solid #2a2a2a', borderRadius: 10, color: '#888', padding: '10px', fontFamily: "'Barlow',sans-serif", fontWeight: 700, fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <span>📋 HISTÓRICO DE PARTIDAS {matchHistory.length > 0 ? `(${matchHistory.length})` : ''}</span>
             <span>{showHistory ? '▲' : '▼'}</span>
           </button>
@@ -4039,27 +3884,14 @@ const [loading, setLoading] = useState(true);  const [drawn, setDrawn] = useStat
                   Nenhuma partida salva ainda.
                 </div>
               ) : (
-                matchHistory.map((h) => (
-                  <HistoryEntry key={h.id} h={h} />
-                ))
+                matchHistory.map((h) => <HistoryEntry key={h.id} h={h} />)
               )}
             </div>
           )}
         </div>
 
         {/* Artilharia */}
-        <div
-          style={{
-            fontSize: 13,
-            color: '#aaa',
-            letterSpacing: 1,
-            fontWeight: 700,
-            margin: '14px 0 10px',
-            background: '#141414',
-            padding: '8px 14px',
-            borderRadius: 6,
-          }}
-        >
+        <div style={{ fontSize: 13, color: '#aaa', letterSpacing: 1, fontWeight: 700, margin: '14px 0 10px', background: '#141414', padding: '8px 14px', borderRadius: 6 }}>
           ⚽ PIKINHA DA NOITE
         </div>
         {drawn ? (
@@ -4070,144 +3902,39 @@ const [loading, setLoading] = useState(true);  const [drawn, setDrawn] = useStat
               .filter(Boolean);
             if (!teamPlayers.length) return null;
             const ordered = [...teamPlayers].sort(
-              (a, b) =>
-                (scorers[b.id] || 0) - (scorers[a.id] || 0) || avgOverall(b) - avgOverall(a)
+              (a, b) => (scorers[b.id] || 0) - (scorers[a.id] || 0) || avgOverall(b) - avgOverall(a)
             );
             return (
-              <div
-                key={teamKey}
-                className="card"
-                style={{
-                  padding: 0,
-                  overflow: 'hidden',
-                  borderColor: cfg.color + '33',
-                }}
-              >
-                <div
-                  style={{
-                    padding: '10px 14px',
-                    borderBottom: '1px solid #1a1a1a',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    background: cfg.color + '0f',
-                  }}
-                >
-                  <span
-                    style={{
-                      fontFamily: "'Bebas Neue',sans-serif",
-                      fontSize: 18,
-                      letterSpacing: 1.5,
-                      color: cfg.color,
-                    }}
-                  >
+              <div key={teamKey} className="card" style={{ padding: 0, overflow: 'hidden', borderColor: cfg.color + '33' }}>
+                <div style={{ padding: '10px 14px', borderBottom: '1px solid #1a1a1a', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: cfg.color + '0f' }}>
+                  <span style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 18, letterSpacing: 1.5, color: cfg.color }}>
                     {cfg.emoji} {cfg.label.toUpperCase()}
                   </span>
-                  <span
-                    style={{ fontSize: 11, color: cfg.color, fontWeight: 700 }}
-                  >
-                    {ordered.length} jogadores
-                  </span>
+                  <span style={{ fontSize: 11, color: cfg.color, fontWeight: 700 }}>{ordered.length} jogadores</span>
                 </div>
                 {ordered.map((p, i) => {
                   const g = scorers[p.id] || 0;
                   return (
-                    <div
-                      key={p.id}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        padding: '10px 14px',
-                        borderBottom:
-                          i < ordered.length - 1 ? '1px solid #1a1a1a' : 'none',
-                      }}
-                    >
-                      <div
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: 10,
-                        }}
-                      >
-                        <span
-                          style={{
-                            color: g > 0 ? '#4ade80' : '#333',
-                            fontFamily: "'Bebas Neue',sans-serif",
-                            fontSize: 20,
-                            width: 24,
-                            textAlign: 'center',
-                          }}
-                        >
+                    <div key={p.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', borderBottom: i < ordered.length - 1 ? '1px solid #1a1a1a' : 'none' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <span style={{ color: g > 0 ? '#4ade80' : '#333', fontFamily: "'Bebas Neue',sans-serif", fontSize: 20, width: 24, textAlign: 'center' }}>
                           {g > 0 ? g : '—'}
                         </span>
                         {g > 0 && <span style={{ fontSize: 10, color: '#2d5a2d' }}>⚽</span>}
-                        <span
-                          style={{
-                            fontSize: 14,
-                            fontWeight: g > 0 ? 700 : 400,
-                            color: g > 0 ? '#f0f0f0' : '#555',
-                          }}
-                        >
+                        <span style={{ fontSize: 14, fontWeight: g > 0 ? 700 : 400, color: g > 0 ? '#f0f0f0' : '#555' }}>
                           {p.name}
                         </span>
                       </div>
                       {isAdmin && (
-                        <div
-                          style={{
-                            display: 'flex',
-                            gap: 6,
-                            alignItems: 'center',
-                          }}
-                        >
-                          <button
-                            type="button"
-                            onClick={() => {
-                              preserveContentScroll(() => {
-                                if (g > 0) {
-                                  const nw = { ...scorers, [p.id]: g - 1 };
-                                  updateScorers(nw);
-                                }
-                              });
-                            }}
-                            style={{
-                              width: 28,
-                              height: 28,
-                              borderRadius: 6,
-                              background: '#1a1a1a',
-                              border: '1px solid #2a2a2a',
-                              color: '#888',
-                              fontSize: 16,
-                              cursor: 'pointer',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                            }}
-                          >
+                        <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                          <button type="button"
+                            onClick={() => { preserveContentScroll(() => { if (g > 0) { const nw = { ...scorers, [p.id]: g - 1 }; updateScorers(nw); } }); }}
+                            style={{ width: 28, height: 28, borderRadius: 6, background: '#1a1a1a', border: '1px solid #2a2a2a', color: '#888', fontSize: 16, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                             −
                           </button>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              preserveContentScroll(() => {
-                                const nw = { ...scorers, [p.id]: g + 1 };
-                                updateScorers(nw);
-                              });
-                            }}
-                            style={{
-                              width: 28,
-                              height: 28,
-                              borderRadius: 6,
-                              background: '#1a3a1a',
-                              border: '1px solid #2d5a2d',
-                              color: '#4ade80',
-                              fontSize: 16,
-                              cursor: 'pointer',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                            }}
-                          >
+                          <button type="button"
+                            onClick={() => { preserveContentScroll(() => { const nw = { ...scorers, [p.id]: g + 1 }; updateScorers(nw); }); }}
+                            style={{ width: 28, height: 28, borderRadius: 6, background: '#1a3a1a', border: '1px solid #2d5a2d', color: '#4ade80', fontSize: 16, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                             +
                           </button>
                         </div>
@@ -4225,98 +3952,26 @@ const [loading, setLoading] = useState(true);  const [drawn, setDrawn] = useStat
               .map((p, i, arr) => {
                 const g = scorers[p.id] || 0;
                 return (
-                  <div
-                    key={p.id}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      padding: '10px 14px',
-                      borderBottom:
-                        i < arr.length - 1 ? '1px solid #1a1a1a' : 'none',
-                    }}
-                  >
-                    <div
-                      style={{ display: 'flex', alignItems: 'center', gap: 10 }}
-                    >
-                      <span
-                        style={{
-                          color: g > 0 ? '#4ade80' : '#333',
-                          fontFamily: "'Bebas Neue',sans-serif",
-                          fontSize: 20,
-                          width: 24,
-                          textAlign: 'center',
-                        }}
-                      >
+                  <div key={p.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', borderBottom: i < arr.length - 1 ? '1px solid #1a1a1a' : 'none' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <span style={{ color: g > 0 ? '#4ade80' : '#333', fontFamily: "'Bebas Neue',sans-serif", fontSize: 20, width: 24, textAlign: 'center' }}>
                         {g > 0 ? g : '—'}
                       </span>
                       {g > 0 && <span style={{ fontSize: 10, color: '#2d5a2d' }}>⚽</span>}
-                      <span
-                        style={{
-                          fontSize: 14,
-                          fontWeight: g > 0 ? 700 : 400,
-                          color: g > 0 ? '#f0f0f0' : '#555',
-                        }}
-                      >
+                      <span style={{ fontSize: 14, fontWeight: g > 0 ? 700 : 400, color: g > 0 ? '#f0f0f0' : '#555' }}>
                         {p.name}
                       </span>
                     </div>
                     {isAdmin && (
-                      <div
-                        style={{
-                          display: 'flex',
-                          gap: 6,
-                          alignItems: 'center',
-                        }}
-                      >
-                        <button
-                          type="button"
-                          onClick={() => {
-                            preserveContentScroll(() => {
-                              if (g > 0) {
-                                const nw = { ...scorers, [p.id]: g - 1 };
-                                updateScorers(nw);
-                              }
-                            });
-                          }}
-                          style={{
-                            width: 28,
-                            height: 28,
-                            borderRadius: 6,
-                            background: '#1a1a1a',
-                            border: '1px solid #2a2a2a',
-                            color: '#888',
-                            fontSize: 16,
-                            cursor: 'pointer',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                          }}
-                        >
+                      <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                        <button type="button"
+                          onClick={() => { preserveContentScroll(() => { if (g > 0) { const nw = { ...scorers, [p.id]: g - 1 }; updateScorers(nw); } }); }}
+                          style={{ width: 28, height: 28, borderRadius: 6, background: '#1a1a1a', border: '1px solid #2a2a2a', color: '#888', fontSize: 16, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                           −
                         </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            preserveContentScroll(() => {
-                              const nw = { ...scorers, [p.id]: g + 1 };
-                              updateScorers(nw);
-                            });
-                          }}
-                          style={{
-                            width: 28,
-                            height: 28,
-                            borderRadius: 6,
-                            background: '#1a3a1a',
-                            border: '1px solid #2d5a2d',
-                            color: '#4ade80',
-                            fontSize: 16,
-                            cursor: 'pointer',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                          }}
-                        >
+                        <button type="button"
+                          onClick={() => { preserveContentScroll(() => { const nw = { ...scorers, [p.id]: g + 1 }; updateScorers(nw); }); }}
+                          style={{ width: 28, height: 28, borderRadius: 6, background: '#1a3a1a', border: '1px solid #2d5a2d', color: '#4ade80', fontSize: 16, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                           +
                         </button>
                       </div>
@@ -4606,6 +4261,63 @@ const [loading, setLoading] = useState(true);  const [drawn, setDrawn] = useStat
     return (
       <div>
         <div className="stitle">GESTÃO</div>
+
+        {/* Número de times */}
+        {isAdmin && (
+          <div className="card" style={{ marginBottom: 12 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                <div style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 14, color: '#4ade80', letterSpacing: 1 }}>MODO DE TIMES</div>
+                <div style={{ fontSize: 11, color: '#555', marginTop: 2 }}>
+                  {numTimes === 4
+                    ? '4 times: Diabos, Azulões, Canarinhos, All Blacks'
+                    : '5 times: + Duendes Verdes · 15 jogos'}
+                </div>
+              </div>
+              <div style={{ display: 'flex', background: '#111', border: '1px solid #1f1f1f', borderRadius: 10, padding: 3, gap: 3 }}>
+                {[4, 5].map(n => (
+                  <button
+                    key={n}
+                    onClick={() => {
+                      if (numTimes === n) return;
+                      if (!confirm(`Mudar para modo ${n} times?\n\nIsso vai zerar o sorteio e as rodadas atuais.`)) return;
+                      setNumTimes(n);
+                      TEAMS_CFG = n === 5 ? { ...TEAMS_CFG_5 } : { ...TEAMS_CFG_4 };
+                      const freshRounds = n === 5 ? INIT_ROUNDS_5 : INIT_ROUNDS_4;
+                      setRounds(freshRounds);
+                      setDrawn(null);
+                      setFinale(INIT_FINAL);
+                      save('fm_numTimes', n);
+                      save('fm_rounds', freshRounds);
+                      save('fm_drawn', null);
+                      save('fm_finale', INIT_FINAL);
+                    }}
+                    style={{
+                      width: 44,
+                      height: 34,
+                      borderRadius: 8,
+                      border: numTimes === n ? `1px solid ${n === 5 ? '#22c55e' : '#4ade80'}` : '1px solid transparent',
+                      background: numTimes === n ? (n === 5 ? '#052e16' : '#0d1f0d') : 'none',
+                      color: numTimes === n ? (n === 5 ? '#22c55e' : '#4ade80') : '#444',
+                      fontFamily: "'Bebas Neue',sans-serif",
+                      fontSize: 20,
+                      cursor: 'pointer',
+                      fontWeight: 900,
+                      transition: 'all .15s',
+                    }}
+                  >
+                    {n}
+                  </button>
+                ))}
+              </div>
+            </div>
+            {numTimes === 5 && (
+              <div style={{ marginTop: 10, background: '#052e16', border: '1px solid #22c55e33', borderRadius: 8, padding: '8px 12px', fontSize: 11, color: '#4ade80' }}>
+                🧌 <strong>Duendes Verdes</strong> ativos · 15 jogos (10 + 5 volta) · Top 2 fazem a final
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Tamanho do time */}
         {isAdmin && (

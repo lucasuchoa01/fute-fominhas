@@ -461,7 +461,7 @@ const INIT_ROUNDS_5 = [
 
 const INIT_ROUNDS = INIT_ROUNDS_4; // default
 
-const INIT_FINAL = { tA: 'vermelho', tB: 'azul', sA: '', sB: '' };
+const INIT_FINAL = { tA: 'vermelho', tB: 'azul', sA: '', sB: '', penaltyWinner: '' };
 
 // ============ UTILS ============
 
@@ -1683,7 +1683,7 @@ const [loading, setLoading] = useState(true);
 
   const addPlayerToLista = (player) => {
     setLista((prev) => {
-      if (prev.slots.length >= teamSize * 4) return prev;
+      if (lista.slots.length >= teamSize * numTimes) return prev;
       if (
         prev.slots.find(
           (s) => normalizeName(s.name) === normalizeName(player.name)
@@ -1732,7 +1732,7 @@ const [loading, setLoading] = useState(true);
     const a = parseInt(finale.sA, 10);
     const b = parseInt(finale.sB, 10);
     if (isNaN(a) || isNaN(b) || !drawn) return null;
-    if (a === b) return null;
+    if (a === b) return finale.penaltyWinner || null;
     return a > b ? finale.tA : finale.tB;
   })();
 
@@ -1780,9 +1780,10 @@ const [loading, setLoading] = useState(true);
       .map((p) => p.id);
 
     const champTeam =
-      finalA > finalB ? finale.tA : finalA < finalB ? finale.tB : null;
+      finalA > finalB ? finale.tA : finalA < finalB ? finale.tB : (finale.penaltyWinner || null);
     const viceTeam =
-      finalA > finalB ? finale.tB : finalA < finalB ? finale.tA : null;
+      finalA > finalB ? finale.tB : finalA < finalB ? finale.tA :
+      (finale.penaltyWinner ? (finale.penaltyWinner === finale.tA ? finale.tB : finale.tA) : null);
     const champIds = champTeam
       ? (drawn[champTeam] || []).filter((p) => !p.isPending).map((p) => p.id)
       : [];
@@ -3612,7 +3613,7 @@ const [loading, setLoading] = useState(true);
     const setFinalScore = (side, rawValue) => {
       const value = String(rawValue).replace(/\D/g, '').slice(0, 2);
       preserveContentScroll(() => {
-        updateFinale({ ...finale, [side]: value });
+        updateFinale({ ...finale, [side]: value, penaltyWinner: '' });
       });
     };
 
@@ -3797,7 +3798,7 @@ const [loading, setLoading] = useState(true);
             <div style={{ textAlign: 'right' }}>
               {isAdmin ? (
                 <select className="sel" style={{ marginBottom: 0, textAlign: 'center' }} value={finale.tA}
-                  onChange={(e) => preserveContentScroll(() => updateFinale({ ...finale, tA: e.target.value }))}>
+                  onChange={(e) => preserveContentScroll(() => updateFinale({ ...finale, tA: e.target.value, penaltyWinner: '' }))}>
                   {Object.entries(TEAMS_CFG).map(([k, c]) => (
                     <option key={k} value={k}>{c.label}</option>
                   ))}
@@ -3836,7 +3837,7 @@ const [loading, setLoading] = useState(true);
             <div style={{ textAlign: 'left' }}>
               {isAdmin ? (
                 <select className="sel" style={{ marginBottom: 0 }} value={finale.tB}
-                  onChange={(e) => preserveContentScroll(() => updateFinale({ ...finale, tB: e.target.value }))}>
+                  onChange={(e) => preserveContentScroll(() => updateFinale({ ...finale, tB: e.target.value, penaltyWinner: '' }))}>
                   {Object.entries(TEAMS_CFG).map(([k, c]) => (
                     <option key={k} value={k}>{c.label}</option>
                   ))}
@@ -3848,6 +3849,72 @@ const [loading, setLoading] = useState(true);
               )}
             </div>
           </div>
+
+          {/* Pênaltis — aparece só quando empatar */}
+          {(() => {
+            const sA = parseInt(finale.sA, 10);
+            const sB = parseInt(finale.sB, 10);
+            const isEmpatado = !isNaN(sA) && !isNaN(sB) && sA === sB;
+            if (!isEmpatado) return null;
+            const cfgA = TEAMS_CFG[finale.tA];
+            const cfgB = TEAMS_CFG[finale.tB];
+            const pw = finale.penaltyWinner;
+            return (
+              <div style={{ marginTop: 14, borderTop: '1px solid #3a2a00', paddingTop: 14 }}>
+                <div style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 12, color: '#f59e0b', letterSpacing: 2, textAlign: 'center', marginBottom: 10 }}>
+                  ⚽ DISPUTA DE PÊNALTIS
+                </div>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  {[finale.tA, finale.tB].map((teamKey) => {
+                    const cfg = TEAMS_CFG[teamKey];
+                    const isWinner = pw === teamKey;
+                    const canClick = isAdmin;
+                    return (
+                      <button
+                        key={teamKey}
+                        onClick={() => {
+                          if (!canClick) return;
+                          preserveContentScroll(() =>
+                            updateFinale({ ...finale, penaltyWinner: isWinner ? '' : teamKey })
+                          );
+                        }}
+                        style={{
+                          flex: 1,
+                          padding: '12px 8px',
+                          borderRadius: 10,
+                          border: `2px solid ${isWinner ? cfg.color : '#2a2a00'}`,
+                          background: isWinner ? cfg.color + '22' : '#0f0d00',
+                          color: isWinner ? cfg.color : '#555',
+                          fontFamily: "'Bebas Neue',sans-serif",
+                          fontSize: 15,
+                          cursor: canClick ? 'pointer' : 'default',
+                          letterSpacing: 1,
+                          transition: 'all .2s',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'center',
+                          gap: 4,
+                        }}
+                      >
+                        <span style={{ fontSize: 22 }}>{cfg.emoji}</span>
+                        <span>{cfg.label}</span>
+                        {isWinner && (
+                          <span style={{ fontSize: 10, background: cfg.color, color: '#000', borderRadius: 4, padding: '1px 8px', fontWeight: 900, marginTop: 2 }}>
+                            🏆 CAMPEÃO
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+                {!pw && isAdmin && (
+                  <div style={{ fontSize: 11, color: '#5a4a00', textAlign: 'center', marginTop: 8, fontStyle: 'italic' }}>
+                    Toque no time vencedor nos pênaltis
+                  </div>
+                )}
+              </div>
+            );
+          })()}
         </div>
 
         {/* Salvar + Nova Semana */}
@@ -4889,7 +4956,7 @@ const [loading, setLoading] = useState(true);
 
   // ── LISTA ─────────────────────────────────────────────────────────────────────
   const TabLista = () => {
-    const totalField = teamSize * 4;
+    const totalField = teamSize * numTimes;
 
     const fmtDateBR = (iso) => {
       if (!iso) return '';
@@ -4917,7 +4984,7 @@ const [loading, setLoading] = useState(true);
       const name = (avulsoRef.current?.value || avulsoName).trim();
       if (!name) return;
       if (lista.slots.length >= totalField) {
-        alert(`A lista já atingiu o limite de ${teamSize * 4} jogadores.`);
+        alert(`A lista já atingiu o limite de ${teamSize * numTimes} jogadores.`);
         return;
       }
       if (
@@ -4948,7 +5015,7 @@ const [loading, setLoading] = useState(true);
 
     const addMensalPresente = (p) => {
       if (lista.slots.length >= totalField) {
-        alert(`A lista já atingiu o limite de ${teamSize * 4} jogadores.`);
+        alert(`A lista já atingiu o limite de ${teamSize * numTimes} jogadores.`);
         return;
       }
       if (

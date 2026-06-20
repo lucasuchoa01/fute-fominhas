@@ -5296,6 +5296,7 @@ const [loading, setLoading] = useState(true);
                       !mensaisNaLista.has(p.name) &&
                       !mensaisAusentes.has(p.name)
                   )
+                  .sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'))
                   .map((p) => (
                     <button
                       key={p.id}
@@ -5346,6 +5347,7 @@ const [loading, setLoading] = useState(true);
                         !mensaisNaLista.has(p.name) &&
                         !mensaisAusentes.has(p.name)
                     )
+                    .sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'))
                     .map((p) => (
                       <button
                         key={p.id}

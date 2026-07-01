@@ -44,23 +44,23 @@ const TEAMS_CFG_4 = {
     emoji: '🐤',
     shield: 'https://firebasestorage.googleapis.com/v0/b/fominhas-league.firebasestorage.app/o/canarinhos.png?alt=media&token=632be39d-a732-45a5-96a9-4920b5cf0427',
   },
-  preto: {
-    label: 'All Blacks',
-    color: '#e5e5e5',
-    dim: '#1a1a1a',
-    emoji: '🦍',
-    shield: 'https://firebasestorage.googleapis.com/v0/b/fominhas-league.firebasestorage.app/o/maquina%20verde.png?alt=media&token=df9161d1-1824-4662-84f4-4cc34897d8c3',
-  },
-};
-
-const TEAMS_CFG_5 = {
-  ...TEAMS_CFG_4,
   verde: {
     label: 'Duendes Verdes',
     color: '#22c55e',
     dim: '#052e16',
     emoji: '🧌',
     shield: '',
+  },
+};
+
+const TEAMS_CFG_5 = {
+  ...TEAMS_CFG_4,
+  preto: {
+    label: 'All Blacks',
+    color: '#e5e5e5',
+    dim: '#1a1a1a',
+    emoji: '🦍',
+    shield: 'https://firebasestorage.googleapis.com/v0/b/fominhas-league.firebasestorage.app/o/maquina%20verde.png?alt=media&token=df9161d1-1824-4662-84f4-4cc34897d8c3',
   },
 };
 
@@ -398,27 +398,27 @@ const INIT_ROUNDS_4 = [
     id: 1,
     pairs: [
       { tA: 'vermelho', tB: 'azul', sA: '', sB: '' },
-      { tA: 'preto', tB: 'amarelo', sA: '', sB: '' },
+      { tA: 'verde', tB: 'amarelo', sA: '', sB: '' },
     ],
   },
   {
     id: 2,
     pairs: [
-      { tA: 'azul', tB: 'preto', sA: '', sB: '' },
+      { tA: 'azul', tB: 'verde', sA: '', sB: '' },
       { tA: 'amarelo', tB: 'vermelho', sA: '', sB: '' },
     ],
   },
   {
     id: 3,
     pairs: [
-      { tA: 'vermelho', tB: 'preto', sA: '', sB: '' },
+      { tA: 'vermelho', tB: 'verde', sA: '', sB: '' },
       { tA: 'azul', tB: 'amarelo', sA: '', sB: '' },
     ],
   },
   {
     id: 4,
     pairs: [
-      { tA: 'preto', tB: 'vermelho', sA: '', sB: '' },
+      { tA: 'verde', tB: 'vermelho', sA: '', sB: '' },
       { tA: 'amarelo', tB: 'azul', sA: '', sB: '' },
     ],
   },
@@ -426,14 +426,14 @@ const INIT_ROUNDS_4 = [
     id: 5,
     pairs: [
       { tA: 'azul', tB: 'vermelho', sA: '', sB: '' },
-      { tA: 'amarelo', tB: 'preto', sA: '', sB: '' },
+      { tA: 'amarelo', tB: 'verde', sA: '', sB: '' },
     ],
   },
   {
     id: 6,
     pairs: [
       { tA: 'vermelho', tB: 'amarelo', sA: '', sB: '' },
-      { tA: 'preto', tB: 'azul', sA: '', sB: '' },
+      { tA: 'verde', tB: 'azul', sA: '', sB: '' },
     ],
   },
 ];

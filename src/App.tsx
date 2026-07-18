@@ -1530,6 +1530,7 @@ const [loading, setLoading] = useState(true);
   const [cardModal, setCardModal] = useState(null);
   const [freeAgents, setFreeAgents] = useState([]);
   const [pendingPicker, setPendingPicker] = useState(null);
+  const [pikinhaOverride, setPikinhaOverride] = useState<number[]>([]); // IDs selecionados manualmente
 
   // Sync TEAM_SIZE global with state
   TEAM_SIZE = teamSize;
@@ -1586,6 +1587,8 @@ const [loading, setLoading] = useState(true);
         if (ts) { setTeamSize(ts); TEAM_SIZE = ts; }
         const nt = load('fm_numTimes');
         if (nt) setNumTimes(nt);
+        const po = load('fm_pikinhaOverride');
+        if (po) setPikinhaOverride(po);
         const mh = load('fm_matchHistory');
         if (mh) {
           // Dedup by date, keep first occurrence (most recent save)
@@ -1657,6 +1660,10 @@ const [loading, setLoading] = useState(true);
   const updateLista = (v) => {
     setLista(v);
     save('fm_lista', v);
+  };
+  const updatePikinhaOverride = (v: number[]) => {
+    setPikinhaOverride(v);
+    save('fm_pikinhaOverride', v);
   };
 
   const openAddPlayerModal = ({
@@ -1746,14 +1753,31 @@ const [loading, setLoading] = useState(true);
     );
     const first = sorted[0];
     if (!first || !(scorers[first.id] > 0)) return null;
-    const tied = sorted.filter(
-      (p) => (scorers[p.id] || 0) === (scorers[first.id] || 0)
-    );
+    const goals = scorers[first.id] || 0;
+    const tied = sorted.filter((p) => (scorers[p.id] || 0) === goals);
+
+    // Se há override definido pelo admin, usar esses jogadores
+    if (pikinhaOverride.length > 0) {
+      const overridePlayers = pikinhaOverride
+        .map(id => players.find(p => p.id === id))
+        .filter(Boolean);
+      if (overridePlayers.length > 0) {
+        return {
+          name: overridePlayers.map(p => p.name).join(' / '),
+          goals,
+          cardUrl: overridePlayers.length === 1 ? (overridePlayers[0].cardUrl || null) : null,
+          tied: overridePlayers.length > 1 ? overridePlayers : null,
+          hasOverride: true,
+        };
+      }
+    }
+
     return {
       name: tied.map((p) => p.name).join(' / '),
-      goals: scorers[first.id] || 0,
+      goals,
       cardUrl: tied.length === 1 ? (first.cardUrl || null) : null,
       tied: tied.length > 1 ? tied : null,
+      hasOverride: false,
     };
   })();
 
@@ -1879,10 +1903,10 @@ const [loading, setLoading] = useState(true);
       ausentes: [],
     };
     setDrawn(null); setRounds(freshRounds); setFinale(INIT_FINAL);
-    setScorers({}); setLista(freshLista); setAppliedMatch(null); setChampTeamPhoto(null);
+    setScorers({}); setLista(freshLista); setAppliedMatch(null); setChampTeamPhoto(null); setPikinhaOverride([]);
     await save('fm_drawn', null); await save('fm_rounds', freshRounds);
     await save('fm_finale', INIT_FINAL); await save('fm_scorers', {});
-    await save('fm_lista', freshLista); await save('fm_appliedMatch', null);
+    await save('fm_lista', freshLista); await save('fm_appliedMatch', null); await save('fm_pikinhaOverride', []);
     const ref2 = doc(db, 'app', 'state'); await setDoc(ref2, { fm_champTeamPhoto: null }, { merge: true });
   };
 
@@ -2430,51 +2454,118 @@ const [loading, setLoading] = useState(true);
       >
         {/* Card Pikinha da Noite */}
         <div className="card" style={{ textAlign: 'center', padding: 14, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-          {currentTopScorer?.tied ? (
-            <>
-              <div style={{ display: 'flex', gap: 8, justifyContent: 'center', width: '100%', alignItems: 'flex-end' }}>
-                {currentTopScorer.tied.map((p) => (
-                  <div key={p.id} style={{ flex: 1, display: 'flex', justifyContent: 'center' }}>
-                    {p.cardUrl ? (
-                      <img src={p.cardUrl} alt={p.name} loading="lazy" onClick={() => setCardModal(p)}
-                        style={{ width: '100%', height: 120, objectFit: 'contain', objectPosition: 'bottom', borderRadius: 8, cursor: 'pointer' }} />
-                    ) : (
-                      <div style={{ width: 80, height: 100, background: 'linear-gradient(160deg,#1c1c1c,#252525)', border: `2px solid ${RANK_COLOR[p.ranking]}`, borderRadius: 8, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-                        <span style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 13, color: RANK_COLOR[p.ranking] }}>{avgOverall(p)}</span>
-                        <span style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 20, color: '#eee' }}>{initials(p.name)}</span>
-                      </div>
+          {(() => {
+            // Calcular empatados reais (independente do override)
+            const listed = players.filter((p) =>
+              lista.slots.some((s) => normalizeName(s.name) === normalizeName(p.name))
+            );
+            const sorted = [...listed].sort((a, b) => (scorers[b.id] || 0) - (scorers[a.id] || 0));
+            const first = sorted[0];
+            const topGoals = first ? (scorers[first.id] || 0) : 0;
+            const tiedAll = topGoals > 0 ? sorted.filter(p => (scorers[p.id] || 0) === topGoals) : [];
+            const hasEmpate = tiedAll.length > 1;
+
+            return (
+              <>
+                {/* Seletor de Pikinha — admin + empate */}
+                {isAdmin && hasEmpate && (
+                  <div style={{ width: '100%', marginBottom: 10 }}>
+                    <div style={{ fontSize: 9, color: '#4ade80', fontWeight: 700, letterSpacing: 1, marginBottom: 6, textAlign: 'left' }}>
+                      EMPATE — {tiedAll.length} com {topGoals} gols · Escolha quem exibir:
+                    </div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, justifyContent: 'center' }}>
+                      {tiedAll.map(p => {
+                        const selected = pikinhaOverride.includes(p.id);
+                        return (
+                          <button
+                            key={p.id}
+                            onClick={() => {
+                              let next: number[];
+                              if (selected) {
+                                next = pikinhaOverride.filter(id => id !== p.id);
+                              } else {
+                                next = [...pikinhaOverride, p.id];
+                              }
+                              updatePikinhaOverride(next);
+                            }}
+                            style={{
+                              padding: '4px 10px',
+                              borderRadius: 20,
+                              border: `1px solid ${selected ? '#4ade80' : '#2a2a2a'}`,
+                              background: selected ? '#0d2a0d' : '#111',
+                              color: selected ? '#4ade80' : '#555',
+                              fontSize: 11,
+                              fontWeight: 700,
+                              cursor: 'pointer',
+                              transition: 'all .15s',
+                            }}
+                          >
+                            {selected ? '✓ ' : ''}{p.name}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    {pikinhaOverride.length > 0 && (
+                      <button
+                        onClick={() => updatePikinhaOverride([])}
+                        style={{ marginTop: 6, background: 'none', border: 'none', color: '#444', fontSize: 10, cursor: 'pointer', textDecoration: 'underline' }}
+                      >
+                        Limpar seleção (mostrar todos)
+                      </button>
                     )}
                   </div>
-                ))}
-              </div>
-              <div style={{ display: 'flex', width: '100%', marginTop: 8 }}>
-                {currentTopScorer.tied.map((p) => (
-                  <div key={p.id} style={{ flex: 1, textAlign: 'center' }}>
-                    <div style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: p.name.length > 8 ? 13 : 16, color: '#4ade80', lineHeight: 1.2 }}>{p.name}</div>
+                )}
+
+                {/* Exibição do card */}
+                {currentTopScorer?.tied ? (
+                  <>
+                    <div style={{ display: 'flex', gap: 8, justifyContent: 'center', width: '100%', alignItems: 'flex-end' }}>
+                      {currentTopScorer.tied.map((p) => (
+                        <div key={p.id} style={{ flex: 1, display: 'flex', justifyContent: 'center' }}>
+                          {p.cardUrl ? (
+                            <img src={p.cardUrl} alt={p.name} loading="lazy" onClick={() => setCardModal(p)}
+                              style={{ width: '100%', height: 120, objectFit: 'contain', objectPosition: 'bottom', borderRadius: 8, cursor: 'pointer' }} />
+                          ) : (
+                            <div style={{ width: 80, height: 100, background: 'linear-gradient(160deg,#1c1c1c,#252525)', border: `2px solid ${RANK_COLOR[p.ranking]}`, borderRadius: 8, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+                              <span style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 13, color: RANK_COLOR[p.ranking] }}>{avgOverall(p)}</span>
+                              <span style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 20, color: '#eee' }}>{initials(p.name)}</span>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                    <div style={{ display: 'flex', width: '100%', marginTop: 8 }}>
+                      {currentTopScorer.tied.map((p) => (
+                        <div key={p.id} style={{ flex: 1, textAlign: 'center' }}>
+                          <div style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: p.name.length > 8 ? 13 : 16, color: '#4ade80', lineHeight: 1.2 }}>{p.name}</div>
+                        </div>
+                      ))}
+                    </div>
+                    <div style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 22, color: '#4ade80', marginTop: 8 }}>{currentTopScorer.goals} GOLS</div>
+                  </>
+                ) : currentTopScorer?.cardUrl ? (
+                  <img src={currentTopScorer.cardUrl} alt={currentTopScorer.name} loading="lazy"
+                    onClick={() => setCardModal(players.find(p => normalizeName(p.name) === normalizeName(currentTopScorer.name)))}
+                    style={{ width: '100%', maxHeight: 160, objectFit: 'contain', objectPosition: 'top', borderRadius: 8, cursor: 'pointer' }} />
+                ) : currentTopScorer ? (
+                  (() => { const p = players.find(pl => normalizeName(pl.name) === normalizeName(currentTopScorer.name));
+                    return <div style={{ width: 100, height: 130, background: 'linear-gradient(160deg,#1c1c1c,#252525)', border: `2px solid ${RANK_COLOR[p?.ranking || 'C']}`, borderRadius: 8, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+                      <span style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 14, color: RANK_COLOR[p?.ranking || 'C'] }}>{p ? avgOverall(p) : '—'}</span>
+                      <span style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 26, color: '#eee' }}>{initials(currentTopScorer.name)}</span>
+                    </div>;
+                  })()
+                ) : <div style={{ fontSize: 36, height: 130, display: 'flex', alignItems: 'center' }}>⚽</div>}
+
+                {!currentTopScorer?.tied && <>
+                  <div style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: currentTopScorer && currentTopScorer.name.length > 10 ? 16 : 24, color: '#4ade80', marginTop: 8, lineHeight: 1.1 }}>
+                    {currentTopScorer ? currentTopScorer.name : '—'}
                   </div>
-                ))}
-              </div>
-              <div style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 22, color: '#4ade80', marginTop: 8 }}>{currentTopScorer.goals} GOLS</div>
-            </>
-          ) : currentTopScorer?.cardUrl ? (
-            <img src={currentTopScorer.cardUrl} alt={currentTopScorer.name} loading="lazy"
-              onClick={() => setCardModal(players.find(p => normalizeName(p.name) === normalizeName(currentTopScorer.name)))}
-              style={{ width: '100%', maxHeight: 160, objectFit: 'contain', objectPosition: 'top', borderRadius: 8, cursor: 'pointer' }} />
-          ) : currentTopScorer ? (
-            (() => { const p = players.find(pl => normalizeName(pl.name) === normalizeName(currentTopScorer.name));
-              return <div style={{ width: 100, height: 130, background: 'linear-gradient(160deg,#1c1c1c,#252525)', border: `2px solid ${RANK_COLOR[p?.ranking || 'C']}`, borderRadius: 8, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-                <span style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 14, color: RANK_COLOR[p?.ranking || 'C'] }}>{p ? avgOverall(p) : '—'}</span>
-                <span style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 26, color: '#eee' }}>{initials(currentTopScorer.name)}</span>
-              </div>;
-            })()
-          ) : <div style={{ fontSize: 36, height: 130, display: 'flex', alignItems: 'center' }}>⚽</div>}
-          {!currentTopScorer?.tied && <>
-            <div style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: currentTopScorer && currentTopScorer.name.length > 10 ? 16 : 24, color: '#4ade80', marginTop: 8, lineHeight: 1.1 }}>
-              {currentTopScorer ? currentTopScorer.name : '—'}
-            </div>
-            {currentTopScorer && <div style={{ fontSize: 11, color: '#4ade80', fontWeight: 700, marginBottom: 2 }}>{currentTopScorer.goals} gols</div>}
-          </>}
-          <div style={{ fontSize: 10, color: '#555', letterSpacing: 1, marginTop: 6 }}>PIKINHA DA NOITE</div>
+                  {currentTopScorer && <div style={{ fontSize: 11, color: '#4ade80', fontWeight: 700, marginBottom: 2 }}>{currentTopScorer.goals} gols</div>}
+                </>}
+                <div style={{ fontSize: 10, color: '#555', letterSpacing: 1, marginTop: 6 }}>PIKINHA DA NOITE</div>
+              </>
+            );
+          })()}
         </div>
 
         {/* Card Líder da Tabela */}

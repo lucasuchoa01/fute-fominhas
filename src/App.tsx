@@ -3687,26 +3687,57 @@ const [loading, setLoading] = useState(true);
     );
     const setRoundScore = (roundIndex, pairIndex, side, rawValue) => {
       const value = String(rawValue).replace(/\D/g, '').slice(0, 2);
-      preserveContentScroll(() => {
-        const nw = rounds.map((rr, rri) =>
-          rri !== roundIndex
-            ? rr
-            : {
-                ...rr,
-                pairs: rr.pairs.map((pp, ppi) =>
-                  ppi !== pairIndex ? pp : { ...pp, [side]: value }
-                ),
-              }
-        );
-        updateRounds(nw);
-      });
+      const nw = rounds.map((rr, rri) =>
+        rri !== roundIndex
+          ? rr
+          : {
+              ...rr,
+              pairs: rr.pairs.map((pp, ppi) =>
+                ppi !== pairIndex ? pp : { ...pp, [side]: value }
+              ),
+            }
+      );
+      updateRounds(nw);
     };
+
+    const adjRoundScore = (roundIndex, pairIndex, side, delta) => {
+      const pair = rounds[roundIndex]?.pairs[pairIndex];
+      if (!pair) return;
+      const cur = parseInt(pair[side] ?? '0', 10) || 0;
+      const next = Math.max(0, cur + delta);
+      setRoundScore(roundIndex, pairIndex, side, String(next));
+    };
+
     const setFinalScore = (side, rawValue) => {
       const value = String(rawValue).replace(/\D/g, '').slice(0, 2);
-      preserveContentScroll(() => {
-        updateFinale({ ...finale, [side]: value, penaltyWinner: '' });
-      });
+      updateFinale({ ...finale, [side]: value, penaltyWinner: '' });
     };
+
+    const adjFinalScore = (side, delta) => {
+      const cur = parseInt(finale[side] ?? '0', 10) || 0;
+      const next = Math.max(0, cur + delta);
+      setFinalScore(side, String(next));
+    };
+
+    // Botão +/− compacto
+    const ScoreBtn = ({ onClick, label, color }: { onClick: () => void; label: string; color: string }) => (
+      <button
+        type="button"
+        onPointerDown={(e) => { e.preventDefault(); onClick(); }}
+        style={{
+          width: 26, height: 26, borderRadius: 6,
+          background: label === '+' ? color + '22' : '#1a1a1a',
+          border: `1px solid ${label === '+' ? color + '66' : '#2a2a2a'}`,
+          color: label === '+' ? color : '#555',
+          fontSize: 16, fontWeight: 900, cursor: 'pointer',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          flexShrink: 0, lineHeight: 1, padding: 0,
+          touchAction: 'manipulation',
+        }}
+      >
+        {label}
+      </button>
+    );
 
     // Renderiza um par de times (usado tanto no modo 4 quanto no 5)
     const renderPair = (pair, ri, pi) => {
@@ -3716,49 +3747,65 @@ const [loading, setLoading] = useState(true);
         <div
           key={pi}
           style={{
-            display: 'grid',
-            gridTemplateColumns: '1fr auto 1fr',
-            alignItems: 'center',
-            gap: 8,
-            padding: pi > 0 ? '10px 0 0' : '0 0 0',
+            padding: pi > 0 ? '12px 0 0' : '0',
             borderTop: pi > 0 ? '1px solid #1a1a1a' : 'none',
           }}
         >
-          <div style={{ textAlign: 'right' }}>
-            <span style={{ color: cA.color, fontWeight: 700, fontSize: 13 }}>
-              {cA.emoji} {cA.label}
-            </span>
+          {/* Linha dos nomes */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'center', gap: 4, marginBottom: 8 }}>
+            <div style={{ textAlign: 'right' }}>
+              <span style={{ color: cA.color, fontWeight: 700, fontSize: 13 }}>{cA.emoji} {cA.label}</span>
+            </div>
+            <span style={{ color: '#333', fontFamily: "'Bebas Neue',sans-serif", fontSize: 16, textAlign: 'center', width: 20 }}>×</span>
+            <div style={{ textAlign: 'left' }}>
+              <span style={{ color: cB.color, fontWeight: 700, fontSize: 13 }}>{cB.emoji} {cB.label}</span>
+            </div>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-            {isAdmin ? (
-              <>
-                <input inputMode="numeric" pattern="[0-9]*" type="text" className="sco"
-                  value={pair.sA ?? ''} style={{ borderColor: cA.color + '66' }}
+
+          {/* Linha dos placares */}
+          {isAdmin ? (
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'center', gap: 4 }}>
+              {/* Time A: − input + */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 5 }}>
+                <ScoreBtn onClick={() => adjRoundScore(ri, pi, 'sA', -1)} label="−" color={cA.color} />
+                <input
+                  inputMode="numeric" pattern="[0-9]*" type="text" className="sco"
+                  value={pair.sA ?? ''}
+                  style={{ borderColor: cA.color + '88', width: 46, height: 46 }}
                   onWheel={(e) => e.currentTarget.blur()}
-                  onChange={(e) => setRoundScore(ri, pi, 'sA', e.target.value)} />
-                <span style={{ color: '#333', fontFamily: "'Bebas Neue',sans-serif", fontSize: 18 }}>×</span>
-                <input inputMode="numeric" pattern="[0-9]*" type="text" className="sco"
-                  value={pair.sB ?? ''} style={{ borderColor: cB.color + '66' }}
+                  onChange={(e) => setRoundScore(ri, pi, 'sA', e.target.value)}
+                />
+                <ScoreBtn onClick={() => adjRoundScore(ri, pi, 'sA', +1)} label="+" color={cA.color} />
+              </div>
+              <span style={{ color: '#333', fontFamily: "'Bebas Neue',sans-serif", fontSize: 18, textAlign: 'center', width: 20 }}>×</span>
+              {/* Time B: − input + */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-start', gap: 5 }}>
+                <ScoreBtn onClick={() => adjRoundScore(ri, pi, 'sB', -1)} label="−" color={cB.color} />
+                <input
+                  inputMode="numeric" pattern="[0-9]*" type="text" className="sco"
+                  value={pair.sB ?? ''}
+                  style={{ borderColor: cB.color + '88', width: 46, height: 46 }}
                   onWheel={(e) => e.currentTarget.blur()}
-                  onChange={(e) => setRoundScore(ri, pi, 'sB', e.target.value)} />
-              </>
-            ) : (
-              <>
+                  onChange={(e) => setRoundScore(ri, pi, 'sB', e.target.value)}
+                />
+                <ScoreBtn onClick={() => adjRoundScore(ri, pi, 'sB', +1)} label="+" color={cB.color} />
+              </div>
+            </div>
+          ) : (
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'center', gap: 4 }}>
+              <div style={{ textAlign: 'right' }}>
                 <span style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 30, color: cA.color }}>
                   {pair.sA !== '' ? pair.sA : '-'}
                 </span>
-                <span style={{ color: '#333', fontSize: 16 }}>×</span>
+              </div>
+              <span style={{ color: '#333', fontSize: 16, textAlign: 'center', width: 20 }}>×</span>
+              <div style={{ textAlign: 'left' }}>
                 <span style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 30, color: cB.color }}>
                   {pair.sB !== '' ? pair.sB : '-'}
                 </span>
-              </>
-            )}
-          </div>
-          <div style={{ textAlign: 'left' }}>
-            <span style={{ color: cB.color, fontWeight: 700, fontSize: 13 }}>
-              {cB.emoji} {cB.label}
-            </span>
-          </div>
+              </div>
+            </div>
+          )}
         </div>
       );
     };
@@ -3885,11 +3932,11 @@ const [loading, setLoading] = useState(true);
           <div style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 15, color: '#f59e0b', letterSpacing: 2, textAlign: 'center', marginBottom: 12 }}>
             🏆 GRANDE FINAL
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'center', gap: 8 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'center', gap: 8, marginBottom: 12 }}>
             <div style={{ textAlign: 'right' }}>
               {isAdmin ? (
                 <select className="sel" style={{ marginBottom: 0, textAlign: 'center' }} value={finale.tA}
-                  onChange={(e) => preserveContentScroll(() => updateFinale({ ...finale, tA: e.target.value, penaltyWinner: '' }))}>
+                  onChange={(e) => updateFinale({ ...finale, tA: e.target.value, penaltyWinner: '' })}>
                   {Object.entries(TEAMS_CFG).map(([k, c]) => (
                     <option key={k} value={k}>{c.label}</option>
                   ))}
@@ -3900,35 +3947,11 @@ const [loading, setLoading] = useState(true);
                 </span>
               )}
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              {isAdmin ? (
-                <>
-                  <input inputMode="numeric" pattern="[0-9]*" type="text" className="sco"
-                    value={finale.sA ?? ''} style={{ borderColor: '#f59e0b55' }}
-                    onWheel={(e) => e.currentTarget.blur()}
-                    onChange={(e) => setFinalScore('sA', e.target.value)} />
-                  <span style={{ color: '#444', fontFamily: "'Bebas Neue',sans-serif", fontSize: 18 }}>×</span>
-                  <input inputMode="numeric" pattern="[0-9]*" type="text" className="sco"
-                    value={finale.sB ?? ''} style={{ borderColor: '#f59e0b55' }}
-                    onWheel={(e) => e.currentTarget.blur()}
-                    onChange={(e) => setFinalScore('sB', e.target.value)} />
-                </>
-              ) : (
-                <>
-                  <span style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 30, color: '#f59e0b' }}>
-                    {finale.sA !== '' ? finale.sA : '-'}
-                  </span>
-                  <span style={{ color: '#333', fontSize: 16 }}>×</span>
-                  <span style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 30, color: '#f59e0b' }}>
-                    {finale.sB !== '' ? finale.sB : '-'}
-                  </span>
-                </>
-              )}
-            </div>
+            <span style={{ color: '#444', fontFamily: "'Bebas Neue',sans-serif", fontSize: 18, textAlign: 'center', width: 20 }}>×</span>
             <div style={{ textAlign: 'left' }}>
               {isAdmin ? (
                 <select className="sel" style={{ marginBottom: 0 }} value={finale.tB}
-                  onChange={(e) => preserveContentScroll(() => updateFinale({ ...finale, tB: e.target.value, penaltyWinner: '' }))}>
+                  onChange={(e) => updateFinale({ ...finale, tB: e.target.value, penaltyWinner: '' })}>
                   {Object.entries(TEAMS_CFG).map(([k, c]) => (
                     <option key={k} value={k}>{c.label}</option>
                   ))}
@@ -3940,6 +3963,47 @@ const [loading, setLoading] = useState(true);
               )}
             </div>
           </div>
+
+          {/* Placares da final */}
+          {isAdmin ? (
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'center', gap: 4 }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 5 }}>
+                <button type="button" onPointerDown={(e) => { e.preventDefault(); adjFinalScore('sA', -1); }}
+                  style={{ width: 26, height: 26, borderRadius: 6, background: '#1a1a1a', border: `1px solid #2a2a2a`, color: '#555', fontSize: 16, fontWeight: 900, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, padding: 0, touchAction: 'manipulation' }}>−</button>
+                <input inputMode="numeric" pattern="[0-9]*" type="text" className="sco"
+                  value={finale.sA ?? ''} style={{ borderColor: (TEAMS_CFG[finale.tA]?.color || '#f59e0b') + '88', width: 46, height: 46 }}
+                  onWheel={(e) => e.currentTarget.blur()}
+                  onChange={(e) => setFinalScore('sA', e.target.value)} />
+                <button type="button" onPointerDown={(e) => { e.preventDefault(); adjFinalScore('sA', +1); }}
+                  style={{ width: 26, height: 26, borderRadius: 6, background: (TEAMS_CFG[finale.tA]?.color || '#f59e0b') + '22', border: `1px solid ${(TEAMS_CFG[finale.tA]?.color || '#f59e0b')}66`, color: TEAMS_CFG[finale.tA]?.color || '#f59e0b', fontSize: 16, fontWeight: 900, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, padding: 0, touchAction: 'manipulation' }}>+</button>
+              </div>
+              <span style={{ color: '#444', fontFamily: "'Bebas Neue',sans-serif", fontSize: 18, textAlign: 'center', width: 20 }}>×</span>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-start', gap: 5 }}>
+                <button type="button" onPointerDown={(e) => { e.preventDefault(); adjFinalScore('sB', -1); }}
+                  style={{ width: 26, height: 26, borderRadius: 6, background: '#1a1a1a', border: `1px solid #2a2a2a`, color: '#555', fontSize: 16, fontWeight: 900, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, padding: 0, touchAction: 'manipulation' }}>−</button>
+                <input inputMode="numeric" pattern="[0-9]*" type="text" className="sco"
+                  value={finale.sB ?? ''} style={{ borderColor: (TEAMS_CFG[finale.tB]?.color || '#f59e0b') + '88', width: 46, height: 46 }}
+                  onWheel={(e) => e.currentTarget.blur()}
+                  onChange={(e) => setFinalScore('sB', e.target.value)} />
+                <button type="button" onPointerDown={(e) => { e.preventDefault(); adjFinalScore('sB', +1); }}
+                  style={{ width: 26, height: 26, borderRadius: 6, background: (TEAMS_CFG[finale.tB]?.color || '#f59e0b') + '22', border: `1px solid ${(TEAMS_CFG[finale.tB]?.color || '#f59e0b')}66`, color: TEAMS_CFG[finale.tB]?.color || '#f59e0b', fontSize: 16, fontWeight: 900, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, padding: 0, touchAction: 'manipulation' }}>+</button>
+              </div>
+            </div>
+          ) : (
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'center', gap: 4 }}>
+              <div style={{ textAlign: 'right' }}>
+                <span style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 30, color: '#f59e0b' }}>
+                  {finale.sA !== '' ? finale.sA : '-'}
+                </span>
+              </div>
+              <span style={{ color: '#333', fontSize: 16, textAlign: 'center' }}>×</span>
+              <div style={{ textAlign: 'left' }}>
+                <span style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 30, color: '#f59e0b' }}>
+                  {finale.sB !== '' ? finale.sB : '-'}
+                </span>
+              </div>
+            </div>
+          )}
 
           {/* Pênaltis — aparece só quando empatar */}
           {(() => {

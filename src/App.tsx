@@ -3739,9 +3739,11 @@ const [loading, setLoading] = useState(true);
     );
 
     // Renderiza um par de times (usado tanto no modo 4 quanto no 5)
-    const renderPair = (pair, ri, pi) => {
+    const renderPair = (pair, ri, pi, tabBase = 1) => {
       const cA = TEAMS_CFG[pair.tA], cB = TEAMS_CFG[pair.tB];
       if (!cA || !cB) return null;
+      const tabA = tabBase;
+      const tabB = tabBase + 1;
       return (
         <div
           key={pi}
@@ -3770,6 +3772,7 @@ const [loading, setLoading] = useState(true);
                 <input
                   inputMode="numeric" pattern="[0-9]*" type="text" className="sco"
                   value={pair.sA ?? ''}
+                  tabIndex={tabA}
                   style={{ borderColor: cA.color + '88', width: 46, height: 46 }}
                   onWheel={(e) => e.currentTarget.blur()}
                   onChange={(e) => setRoundScore(ri, pi, 'sA', e.target.value)}
@@ -3783,6 +3786,7 @@ const [loading, setLoading] = useState(true);
                 <input
                   inputMode="numeric" pattern="[0-9]*" type="text" className="sco"
                   value={pair.sB ?? ''}
+                  tabIndex={tabB}
                   style={{ borderColor: cB.color + '88', width: 46, height: 46 }}
                   onWheel={(e) => e.currentTarget.blur()}
                   onChange={(e) => setRoundScore(ri, pi, 'sB', e.target.value)}
@@ -3824,7 +3828,7 @@ const [loading, setLoading] = useState(true);
               <div style={{ fontSize: 10, color: '#555', fontWeight: 700, letterSpacing: 1, marginBottom: 8 }}>
                 JOGO {r.id}
               </div>
-              {r.pairs.map((pair, pi) => renderPair(pair, rounds.indexOf(r), pi))}
+              {r.pairs.map((pair, pi) => renderPair(pair, rounds.indexOf(r), pi, rounds.indexOf(r) * 2 + pi * 2 + 1))}
             </div>
           ))}
 
@@ -3837,7 +3841,7 @@ const [loading, setLoading] = useState(true);
               <div style={{ fontSize: 10, color: '#555', fontWeight: 700, letterSpacing: 1, marginBottom: 8 }}>
                 JOGO {r.id}
               </div>
-              {r.pairs.map((pair, pi) => renderPair(pair, rounds.indexOf(r), pi))}
+              {r.pairs.map((pair, pi) => renderPair(pair, rounds.indexOf(r), pi, rounds.indexOf(r) * 2 + pi * 2 + 1))}
             </div>
           ))}
         </>
@@ -3855,7 +3859,7 @@ const [loading, setLoading] = useState(true);
             <div style={{ fontSize: 11, color: '#555', fontWeight: 700, letterSpacing: 1, marginBottom: 10 }}>
               RODADA {r.id}
             </div>
-            {r.pairs.map((pair, pi) => renderPair(pair, ri, pi))}
+            {r.pairs.map((pair, pi) => renderPair(pair, ri, pi, ri * r.pairs.length * 2 + pi * 2 + 1))}
           </div>
         ))}
       </>
@@ -3971,6 +3975,7 @@ const [loading, setLoading] = useState(true);
                   style={{ width: 26, height: 26, borderRadius: 6, background: '#1a1a1a', border: `1px solid #2a2a2a`, color: '#555', fontSize: 16, fontWeight: 900, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, padding: 0, touchAction: 'manipulation' }}>−</button>
                 <input inputMode="numeric" pattern="[0-9]*" type="text" className="sco"
                   value={finale.sA ?? ''} style={{ borderColor: (TEAMS_CFG[finale.tA]?.color || '#f59e0b') + '88', width: 46, height: 46 }}
+                  tabIndex={25}
                   onWheel={(e) => e.currentTarget.blur()}
                   onChange={(e) => setFinalScore('sA', e.target.value)} />
                 <button type="button" onPointerDown={(e) => { e.preventDefault(); adjFinalScore('sA', +1); }}
@@ -3982,6 +3987,7 @@ const [loading, setLoading] = useState(true);
                   style={{ width: 26, height: 26, borderRadius: 6, background: '#1a1a1a', border: `1px solid #2a2a2a`, color: '#555', fontSize: 16, fontWeight: 900, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, padding: 0, touchAction: 'manipulation' }}>−</button>
                 <input inputMode="numeric" pattern="[0-9]*" type="text" className="sco"
                   value={finale.sB ?? ''} style={{ borderColor: (TEAMS_CFG[finale.tB]?.color || '#f59e0b') + '88', width: 46, height: 46 }}
+                  tabIndex={26}
                   onWheel={(e) => e.currentTarget.blur()}
                   onChange={(e) => setFinalScore('sB', e.target.value)} />
                 <button type="button" onPointerDown={(e) => { e.preventDefault(); adjFinalScore('sB', +1); }}

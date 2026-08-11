@@ -1891,8 +1891,7 @@ const [loading, setLoading] = useState(true);
   const resetSemana = async () => {
     const hoje = new Date().getDay();
     if (hoje !== 4 && hoje !== 5 && hoje !== 6 && hoje !== 0 && hoje !== 3) {
-      alert('A nova semana só pode ser iniciada a partir de Quinta-feira! 📅');
-      return;
+      // Restrição removida — pode zerar qualquer dia
     }
     if (!confirm('Zerar a semana?\n\nLista, sorteio e placares serao apagados.\nA Tabela Geral NAO sera afetada.')) return;
     const freshRounds = numTimes === 5 ? INIT_ROUNDS_5 : INIT_ROUNDS_4;

@@ -1531,6 +1531,10 @@ const [loading, setLoading] = useState(true);
   const [freeAgents, setFreeAgents] = useState([]);
   const [pendingPicker, setPendingPicker] = useState(null);
   const [pikinhaOverride, setPikinhaOverride] = useState<number[]>([]); // IDs selecionados manualmente
+  const [showImport, setShowImport] = useState(false);
+  const [importText, setImportText] = useState('');
+  const [importLoading, setImportLoading] = useState(false);
+  const [importResult, setImportResult] = useState<string | null>(null);
 
   // Sync TEAM_SIZE global with state
   TEAM_SIZE = teamSize;
@@ -3722,6 +3726,7 @@ const [loading, setLoading] = useState(true);
     const ScoreBtn = ({ onClick, label, color }: { onClick: () => void; label: string; color: string }) => (
       <button
         type="button"
+        tabIndex={-1}
         onPointerDown={(e) => { e.preventDefault(); onClick(); }}
         style={{
           width: 26, height: 26, borderRadius: 6,
@@ -3874,16 +3879,254 @@ const [loading, setLoading] = useState(true);
             <span style={{ fontSize: 10, color: numTimes === 5 ? '#22c55e' : '#4ade80', background: numTimes === 5 ? '#052e16' : '#0d1f0d', border: `1px solid ${numTimes === 5 ? '#22c55e44' : '#2d5a2d'}`, borderRadius: 6, padding: '2px 8px', fontWeight: 700, letterSpacing: 0.5 }}>
               {numTimes} TIMES
             </span>
+            {isAdmin && (
+              <button
+                onClick={() => { setShowImport(true); setImportResult(null); setImportText(''); }}
+                style={{ background: '#0d1f2e', border: '1px solid #1e3a5f', borderRadius: 7, padding: '4px 10px', color: '#38bdf8', fontSize: 11, fontWeight: 700, cursor: 'pointer', letterSpacing: 0.5 }}
+              >
+                📥 IMPORTAR
+              </button>
+            )}
             {appliedMatch && (
               <span style={{ fontSize: 10, color: '#22c55e', fontWeight: 700, letterSpacing: 1 }}>SALVO</span>
             )}
             {isAdmin && (
-              <span style={{ fontSize: 10, color: '#4ade80', fontWeight: 700, letterSpacing: 1 }}>MODO ADMIN</span>
+              <span style={{ fontSize: 10, color: '#4ade80', fontWeight: 700, letterSpacing: 1 }}>ADMIN</span>
             )}
           </div>
         </div>
 
-        {/* Rodadas conforme modo */}
+        {/* ── MODAL DE IMPORTAÇÃO ── */}
+        {showImport && (
+          <div className="overlay" onClick={() => !importLoading && setShowImport(false)}>
+            <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 420, maxHeight: '90vh', overflowY: 'auto' }}>
+              <div style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 22, color: '#38bdf8', marginBottom: 4, letterSpacing: 2 }}>
+                📥 IMPORTAR RODADA
+              </div>
+              <div style={{ fontSize: 11, color: '#555', marginBottom: 14 }}>
+                Cole texto livre ou siga o template abaixo. A IA interpreta e preenche tudo automaticamente.
+              </div>
+
+              {/* Template */}
+              <div style={{ marginBottom: 10 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                  <span style={{ fontSize: 10, color: '#4ade80', fontWeight: 700, letterSpacing: 1 }}>TEMPLATE SUGERIDO</span>
+                  <button
+                    onClick={() => {
+                      const teamLines = Object.entries(TEAMS_CFG)
+                        .map(([, cfg]) => `${cfg.label}: jogador1, jogador2, jogador3, jogador4, jogador5`)
+                        .join('\n');
+                      const roundLines = numTimes === 5
+                        ? INIT_ROUNDS_5.map(r => `Jogo ${r.id}: ${TEAMS_CFG[r.pairs[0].tA]?.label} X × Y ${TEAMS_CFG[r.pairs[0].tB]?.label}`).join('\n')
+                        : INIT_ROUNDS_4.map(r => r.pairs.map(p => `${TEAMS_CFG[p.tA]?.label} X × Y ${TEAMS_CFG[p.tB]?.label}`).join('\n')).join('\n');
+                      const template = `TIMES:\n${teamLines}\n\nRESULTADOS:\n${roundLines}\n\nFINAL:\n${TEAMS_CFG[finale.tA]?.label} X × Y ${TEAMS_CFG[finale.tB]?.label}\n\nGOLS:\njogador1 2, jogador2 1\n\nLISTA:\njogador1, jogador2, jogador3`;
+                      setImportText(template);
+                    }}
+                    style={{ background: '#0d1f0d', border: '1px solid #2d5a2d', borderRadius: 6, padding: '3px 10px', color: '#4ade80', fontSize: 10, cursor: 'pointer', fontWeight: 700 }}
+                  >
+                    USAR TEMPLATE
+                  </button>
+                </div>
+                <div style={{ background: '#080808', border: '1px solid #1a1a1a', borderRadius: 8, padding: '10px 12px', fontSize: 11, color: '#333', fontFamily: 'monospace', lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>
+{`TIMES:
+${Object.values(TEAMS_CFG).map(c => `${c.label}: j1, j2, j3, j4, j5`).join('\n')}
+
+RESULTADOS:
+Rodada 1: TimeA X × Y TimeB, TimeC X × Y TimeD
+...
+
+FINAL: TimeA X × Y TimeB
+
+GOLS: nome1 2, nome2 1
+
+LISTA: nome1, nome2, nome3`}
+                </div>
+              </div>
+
+              {/* Área de texto */}
+              <label className="lbl">SEU TEXTO</label>
+              <textarea
+                className="inp"
+                style={{ height: 200, resize: 'vertical', fontFamily: 'monospace', fontSize: 12, lineHeight: 1.6, marginBottom: 12 }}
+                placeholder="Cole aqui o texto com os times, resultados, gols e lista..."
+                value={importText}
+                onChange={e => setImportText(e.target.value)}
+              />
+
+              {/* Resultado */}
+              {importResult && (
+                <div style={{ background: importResult.startsWith('❌') ? '#1a0808' : '#0a1f0a', border: `1px solid ${importResult.startsWith('❌') ? '#ef444433' : '#22c55e33'}`, borderRadius: 8, padding: '10px 12px', marginBottom: 12, fontSize: 12, color: importResult.startsWith('❌') ? '#ef4444' : '#4ade80', whiteSpace: 'pre-wrap', lineHeight: 1.6 }}>
+                  {importResult}
+                </div>
+              )}
+
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button className="btn2" style={{ flex: 1, padding: 10 }} onClick={() => setShowImport(false)} disabled={importLoading}>
+                  Cancelar
+                </button>
+                <button
+                  className="btn"
+                  style={{ flex: 2, background: importLoading ? '#1a3a1a' : 'linear-gradient(135deg,#0369a1,#38bdf8)', opacity: importLoading ? 0.7 : 1 }}
+                  disabled={importLoading || !importText.trim()}
+                  onClick={async () => {
+                    setImportLoading(true);
+                    setImportResult(null);
+                    try {
+                      const teamNames = Object.entries(TEAMS_CFG).map(([k, c]) => `"${k}": "${(c as any).label}"`).join(', ');
+                      const playerNames = players.map(p => p.name).join(', ');
+                      const roundsInfo = numTimes === 5
+                        ? INIT_ROUNDS_5.map(r => `Jogo ${r.id}: ${r.pairs[0].tA} vs ${r.pairs[0].tB}`).join('; ')
+                        : INIT_ROUNDS_4.map(r => `Rodada ${r.id}: ${r.pairs.map(p => `${p.tA} vs ${p.tB}`).join(', ')}`).join('; ');
+
+                      const prompt = `Você é um assistente que interpreta texto sobre partidas de futsal e retorna JSON estruturado.
+
+Times disponíveis (use exatamente estas chaves): ${teamNames}
+Jogadores cadastrados (use o nome mais próximo): ${playerNames}
+Estrutura de rodadas: ${roundsInfo}
+Modo atual: ${numTimes} times
+
+Texto a interpretar:
+${importText}
+
+Retorne SOMENTE um JSON válido com esta estrutura (omita campos que não encontrar):
+{
+  "lista": ["nome1", "nome2"],
+  "times": {
+    "vermelho": ["nome1", "nome2"],
+    "azul": ["nome1"],
+    "amarelo": [],
+    "verde": [],
+    "preto": []
+  },
+  "rodadas": [
+    {"id": 1, "pairs": [{"tA": "vermelho", "sA": "3", "tB": "azul", "sB": "1"}, {"tA": "verde", "sA": "2", "tB": "amarelo", "sB": "0"}]}
+  ],
+  "final": {"tA": "vermelho", "tB": "azul", "sA": "2", "sB": "1"},
+  "gols": {"nome1": 3, "nome2": 1}
+}
+
+Regras:
+- Para nomes de jogadores, use fuzzy match com a lista de jogadores cadastrados
+- As chaves dos times devem ser exatamente: vermelho, azul, amarelo, verde, preto
+- sA e sB são strings com o placar (ex: "3", "0")
+- Se não encontrar um campo, omita-o do JSON
+- Retorne APENAS o JSON, sem explicações`;
+
+                      const res = await fetch('https://api.anthropic.com/v1/messages', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                          model: 'claude-sonnet-4-6',
+                          max_tokens: 1000,
+                          messages: [{ role: 'user', content: prompt }],
+                        }),
+                      });
+                      const data = await res.json();
+                      const raw = data.content?.find((c: any) => c.type === 'text')?.text || '';
+                      const jsonMatch = raw.match(/\{[\s\S]*\}/);
+                      if (!jsonMatch) throw new Error('Não encontrei JSON na resposta da IA');
+                      const parsed = JSON.parse(jsonMatch[0]);
+
+                      let log: string[] = [];
+
+                      // 1. Lista de presentes
+                      if (parsed.lista?.length) {
+                        const newSlots = parsed.lista.map((name: string) => ({ name }));
+                        const newLista = { ...lista, slots: newSlots };
+                        updateLista(newLista);
+                        log.push(`✅ Lista: ${parsed.lista.length} jogadores`);
+                      }
+
+                      // 2. Times sorteados
+                      if (parsed.times) {
+                        const newDrawn: Record<string, any[]> = {};
+                        let totalAssigned = 0;
+                        Object.entries(parsed.times).forEach(([teamKey, names]) => {
+                          if (!TEAMS_CFG[teamKey]) return;
+                          const teamPlayers = (names as string[]).map(name => {
+                            const found = players.find(p =>
+                              normalizeName(p.name) === normalizeName(name) ||
+                              normalizeName(p.name).includes(normalizeName(name)) ||
+                              normalizeName(name).includes(normalizeName(p.name))
+                            );
+                            return found || null;
+                          }).filter(Boolean);
+                          newDrawn[teamKey] = teamPlayers;
+                          totalAssigned += teamPlayers.length;
+                        });
+                        if (totalAssigned > 0) {
+                          updateDrawn(newDrawn);
+                          log.push(`✅ Times: ${totalAssigned} jogadores distribuídos`);
+                        }
+                      }
+
+                      // 3. Rodadas
+                      if (parsed.rodadas?.length) {
+                        const newRounds = rounds.map(r => {
+                          const imported = parsed.rodadas.find((ir: any) => ir.id === r.id);
+                          if (!imported) return r;
+                          return {
+                            ...r,
+                            pairs: r.pairs.map((pair, pi) => {
+                              const ip = imported.pairs?.[pi];
+                              if (!ip) return pair;
+                              return { ...pair, sA: ip.sA ?? pair.sA, sB: ip.sB ?? pair.sB };
+                            }),
+                          };
+                        });
+                        updateRounds(newRounds);
+                        log.push(`✅ Placares: ${parsed.rodadas.length} rodadas`);
+                      }
+
+                      // 4. Final
+                      if (parsed.final) {
+                        const f = parsed.final;
+                        const newFinale = {
+                          tA: f.tA || finale.tA,
+                          tB: f.tB || finale.tB,
+                          sA: f.sA ?? finale.sA,
+                          sB: f.sB ?? finale.sB,
+                          penaltyWinner: '',
+                        };
+                        updateFinale(newFinale);
+                        log.push(`✅ Final: ${TEAMS_CFG[newFinale.tA]?.label} ${newFinale.sA} × ${newFinale.sB} ${TEAMS_CFG[newFinale.tB]?.label}`);
+                      }
+
+                      // 5. Gols
+                      if (parsed.gols && Object.keys(parsed.gols).length > 0) {
+                        const newScorers: Record<number, number> = {};
+                        Object.entries(parsed.gols).forEach(([name, goals]) => {
+                          const found = players.find(p =>
+                            normalizeName(p.name) === normalizeName(name) ||
+                            normalizeName(p.name).includes(normalizeName(name)) ||
+                            normalizeName(name).includes(normalizeName(p.name))
+                          );
+                          if (found) newScorers[found.id] = Number(goals);
+                        });
+                        updateScorers(newScorers);
+                        log.push(`✅ Gols: ${Object.keys(newScorers).length} artilheiros`);
+                      }
+
+                      if (log.length === 0) {
+                        setImportResult('⚠️ Não consegui identificar dados no texto. Tente usar o template como base.');
+                      } else {
+                        setImportResult('🎉 Importado com sucesso!\n\n' + log.join('\n'));
+                      }
+                    } catch (err: any) {
+                      setImportResult('❌ Erro: ' + (err.message || 'Falha ao processar o texto'));
+                    } finally {
+                      setImportLoading(false);
+                    }
+                  }}
+                >
+                  {importLoading ? '⏳ Interpretando...' : '🤖 IMPORTAR COM IA'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+
         {numTimes === 5 ? renderRounds5() : renderRounds4()}
 
         {/* Classificação */}

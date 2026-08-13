@@ -3897,234 +3897,250 @@ const [loading, setLoading] = useState(true);
         </div>
 
         {/* ── MODAL DE IMPORTAÇÃO ── */}
-        {showImport && (
-          <div className="overlay" onClick={() => !importLoading && setShowImport(false)}>
-            <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 420, maxHeight: '90vh', overflowY: 'auto' }}>
-              <div style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 22, color: '#38bdf8', marginBottom: 4, letterSpacing: 2 }}>
-                📥 IMPORTAR RODADA
-              </div>
-              <div style={{ fontSize: 11, color: '#555', marginBottom: 14 }}>
-                Cole texto livre ou siga o template abaixo. A IA interpreta e preenche tudo automaticamente.
-              </div>
+        {showImport && (() => {
+          const [importTab, setImportTab] = (React as any).useState('lista'); // 'lista' | 'times'
+          const [importImage, setImportImage] = (React as any).useState<string | null>(null);
 
-              {/* Template */}
-              <div style={{ marginBottom: 10 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                  <span style={{ fontSize: 10, color: '#4ade80', fontWeight: 700, letterSpacing: 1 }}>TEMPLATE SUGERIDO</span>
-                  <button
-                    onClick={() => {
-                      const teamLines = Object.entries(TEAMS_CFG)
-                        .map(([, cfg]) => `${cfg.label}: jogador1, jogador2, jogador3, jogador4, jogador5`)
-                        .join('\n');
-                      const roundLines = numTimes === 5
-                        ? INIT_ROUNDS_5.map(r => `Jogo ${r.id}: ${TEAMS_CFG[r.pairs[0].tA]?.label} X × Y ${TEAMS_CFG[r.pairs[0].tB]?.label}`).join('\n')
-                        : INIT_ROUNDS_4.map(r => r.pairs.map(p => `${TEAMS_CFG[p.tA]?.label} X × Y ${TEAMS_CFG[p.tB]?.label}`).join('\n')).join('\n');
-                      const template = `TIMES:\n${teamLines}\n\nRESULTADOS:\n${roundLines}\n\nFINAL:\n${TEAMS_CFG[finale.tA]?.label} X × Y ${TEAMS_CFG[finale.tB]?.label}\n\nGOLS:\njogador1 2, jogador2 1\n\nLISTA:\njogador1, jogador2, jogador3`;
-                      setImportText(template);
-                    }}
-                    style={{ background: '#0d1f0d', border: '1px solid #2d5a2d', borderRadius: 6, padding: '3px 10px', color: '#4ade80', fontSize: 10, cursor: 'pointer', fontWeight: 700 }}
-                  >
-                    USAR TEMPLATE
-                  </button>
-                </div>
-                <div style={{ background: '#080808', border: '1px solid #1a1a1a', borderRadius: 8, padding: '10px 12px', fontSize: 11, color: '#333', fontFamily: 'monospace', lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>
-{`TIMES:
-${Object.values(TEAMS_CFG).map(c => `${c.label}: j1, j2, j3, j4, j5`).join('\n')}
+          const doImportLista = async () => {
+            if (!importText.trim()) return;
+            setImportLoading(true);
+            setImportResult(null);
+            try {
+              const playerNames = players.map(p => p.name).join(', ');
+              const prompt = `Você recebe uma lista de jogadores presentes em um jogo de futsal e retorna JSON.
 
-RESULTADOS:
-Rodada 1: TimeA X × Y TimeB, TimeC X × Y TimeD
-...
+Jogadores cadastrados no sistema (faça fuzzy match): ${playerNames}
 
-FINAL: TimeA X × Y TimeB
-
-GOLS: nome1 2, nome2 1
-
-LISTA: nome1, nome2, nome3`}
-                </div>
-              </div>
-
-              {/* Área de texto */}
-              <label className="lbl">SEU TEXTO</label>
-              <textarea
-                className="inp"
-                style={{ height: 200, resize: 'vertical', fontFamily: 'monospace', fontSize: 12, lineHeight: 1.6, marginBottom: 12 }}
-                placeholder="Cole aqui o texto com os times, resultados, gols e lista..."
-                value={importText}
-                onChange={e => setImportText(e.target.value)}
-              />
-
-              {/* Resultado */}
-              {importResult && (
-                <div style={{ background: importResult.startsWith('❌') ? '#1a0808' : '#0a1f0a', border: `1px solid ${importResult.startsWith('❌') ? '#ef444433' : '#22c55e33'}`, borderRadius: 8, padding: '10px 12px', marginBottom: 12, fontSize: 12, color: importResult.startsWith('❌') ? '#ef4444' : '#4ade80', whiteSpace: 'pre-wrap', lineHeight: 1.6 }}>
-                  {importResult}
-                </div>
-              )}
-
-              <div style={{ display: 'flex', gap: 8 }}>
-                <button className="btn2" style={{ flex: 1, padding: 10 }} onClick={() => setShowImport(false)} disabled={importLoading}>
-                  Cancelar
-                </button>
-                <button
-                  className="btn"
-                  style={{ flex: 2, background: importLoading ? '#1a3a1a' : 'linear-gradient(135deg,#0369a1,#38bdf8)', opacity: importLoading ? 0.7 : 1 }}
-                  disabled={importLoading || !importText.trim()}
-                  onClick={async () => {
-                    setImportLoading(true);
-                    setImportResult(null);
-                    try {
-                      const teamNames = Object.entries(TEAMS_CFG).map(([k, c]) => `"${k}": "${(c as any).label}"`).join(', ');
-                      const playerNames = players.map(p => p.name).join(', ');
-                      const roundsInfo = numTimes === 5
-                        ? INIT_ROUNDS_5.map(r => `Jogo ${r.id}: ${r.pairs[0].tA} vs ${r.pairs[0].tB}`).join('; ')
-                        : INIT_ROUNDS_4.map(r => `Rodada ${r.id}: ${r.pairs.map(p => `${p.tA} vs ${p.tB}`).join(', ')}`).join('; ');
-
-                      const prompt = `Você é um assistente que interpreta texto sobre partidas de futsal e retorna JSON estruturado.
-
-Times disponíveis (use exatamente estas chaves): ${teamNames}
-Jogadores cadastrados (use o nome mais próximo): ${playerNames}
-Estrutura de rodadas: ${roundsInfo}
-Modo atual: ${numTimes} times
-
-Texto a interpretar:
+Lista recebida:
 ${importText}
 
-Retorne SOMENTE um JSON válido com esta estrutura (omita campos que não encontrar):
+Retorne SOMENTE JSON válido:
+{"lista": ["nome1", "nome2", ...]}
+
+Regras:
+- Extraia apenas os nomes, ignorando números, emojis, textos como "Presentes", "Ausentes" etc
+- Para cada nome encontrado, use o nome mais próximo da lista de cadastrados (fuzzy match)
+- Se não encontrar correspondência, use o nome como está no texto
+- Retorne APENAS o JSON`;
+
+              const res = await fetch('https://api.anthropic.com/v1/messages', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  model: 'claude-sonnet-4-6',
+                  max_tokens: 500,
+                  messages: [{ role: 'user', content: prompt }],
+                }),
+              });
+              const data = await res.json();
+              const raw = data.content?.find((c: any) => c.type === 'text')?.text || '';
+              const jsonMatch = raw.match(/\{[\s\S]*\}/);
+              if (!jsonMatch) throw new Error('IA não retornou JSON válido');
+              const parsed = JSON.parse(jsonMatch[0]);
+              if (!parsed.lista?.length) throw new Error('Nenhum jogador encontrado no texto');
+              const newSlots = parsed.lista.map((name: string) => ({ name }));
+              updateLista({ ...lista, slots: newSlots });
+              setImportResult(`✅ Lista preenchida com ${parsed.lista.length} jogadores:\n${parsed.lista.join(', ')}`);
+            } catch (err: any) {
+              setImportResult('❌ Erro: ' + (err.message || 'Falha ao processar'));
+            } finally {
+              setImportLoading(false);
+            }
+          };
+
+          const doImportTimes = async () => {
+            if (!importImage) return;
+            setImportLoading(true);
+            setImportResult(null);
+            try {
+              const teamNames = Object.entries(TEAMS_CFG).map(([k, c]) => `"${k}": "${(c as any).label}"`).join(', ');
+              const playerNames = players.map(p => p.name).join(', ');
+              const base64 = importImage.split(',')[1];
+              const mediaType = importImage.split(';')[0].split(':')[1];
+
+              const prompt = `Você analisa uma imagem de sorteio de times de futsal e retorna JSON.
+
+Times disponíveis (use exatamente estas chaves): ${teamNames}
+Jogadores cadastrados (faça fuzzy match): ${playerNames}
+
+Identifique a qual time cada jogador foi sorteado na imagem e retorne SOMENTE JSON:
 {
-  "lista": ["nome1", "nome2"],
   "times": {
-    "vermelho": ["nome1", "nome2"],
-    "azul": ["nome1"],
-    "amarelo": [],
-    "verde": [],
-    "preto": []
+    "azul": ["nome1", "nome2", "nome3", "nome4", "nome5"],
+    "vermelho": ["nome1", "nome2", "nome3", "nome4", "nome5"],
+    "amarelo": ["nome1", "nome2", "nome3", "nome4", "nome5"],
+    "verde": ["nome1", "nome2", "nome3", "nome4", "nome5"]
   },
-  "rodadas": [
-    {"id": 1, "pairs": [{"tA": "vermelho", "sA": "3", "tB": "azul", "sB": "1"}, {"tA": "verde", "sA": "2", "tB": "amarelo", "sB": "0"}]}
-  ],
-  "final": {"tA": "vermelho", "tB": "azul", "sA": "2", "sB": "1"},
-  "gols": {"nome1": 3, "nome2": 1}
+  "lista": ["todos", "os", "jogadores", "encontrados"]
 }
 
 Regras:
-- Para nomes de jogadores, use fuzzy match com a lista de jogadores cadastrados
-- As chaves dos times devem ser exatamente: vermelho, azul, amarelo, verde, preto
-- sA e sB são strings com o placar (ex: "3", "0")
-- Se não encontrar um campo, omita-o do JSON
+- Use fuzzy match com a lista de jogadores cadastrados para corrigir nomes
+- As chaves devem ser exatamente: vermelho, azul, amarelo, verde (e "preto" se houver 5 times)
+- Inclua também "lista" com todos os jogadores encontrados na imagem
 - Retorne APENAS o JSON, sem explicações`;
 
-                      const res = await fetch('https://api.anthropic.com/v1/messages', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                          model: 'claude-sonnet-4-6',
-                          max_tokens: 1000,
-                          messages: [{ role: 'user', content: prompt }],
-                        }),
-                      });
-                      const data = await res.json();
-                      const raw = data.content?.find((c: any) => c.type === 'text')?.text || '';
-                      const jsonMatch = raw.match(/\{[\s\S]*\}/);
-                      if (!jsonMatch) throw new Error('Não encontrei JSON na resposta da IA');
-                      const parsed = JSON.parse(jsonMatch[0]);
+              const res = await fetch('https://api.anthropic.com/v1/messages', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  model: 'claude-sonnet-4-6',
+                  max_tokens: 800,
+                  messages: [{
+                    role: 'user',
+                    content: [
+                      { type: 'image', source: { type: 'base64', media_type: mediaType, data: base64 } },
+                      { type: 'text', text: prompt },
+                    ],
+                  }],
+                }),
+              });
+              const data = await res.json();
+              const raw = data.content?.find((c: any) => c.type === 'text')?.text || '';
+              const jsonMatch = raw.match(/\{[\s\S]*\}/);
+              if (!jsonMatch) throw new Error('IA não retornou JSON válido');
+              const parsed = JSON.parse(jsonMatch[0]);
 
-                      let log: string[] = [];
+              let log: string[] = [];
 
-                      // 1. Lista de presentes
-                      if (parsed.lista?.length) {
-                        const newSlots = parsed.lista.map((name: string) => ({ name }));
-                        const newLista = { ...lista, slots: newSlots };
-                        updateLista(newLista);
-                        log.push(`✅ Lista: ${parsed.lista.length} jogadores`);
-                      }
+              // Preencher times
+              if (parsed.times) {
+                const newDrawn: Record<string, any[]> = {};
+                let total = 0;
+                Object.entries(parsed.times).forEach(([teamKey, names]) => {
+                  if (!TEAMS_CFG[teamKey]) return;
+                  const teamPlayers = (names as string[]).map((name: string) => {
+                    return players.find(p =>
+                      normalizeName(p.name) === normalizeName(name) ||
+                      normalizeName(p.name).includes(normalizeName(name)) ||
+                      normalizeName(name).includes(normalizeName(p.name))
+                    ) || null;
+                  }).filter(Boolean);
+                  newDrawn[teamKey] = teamPlayers;
+                  total += teamPlayers.length;
+                });
+                if (total > 0) {
+                  updateDrawn(newDrawn);
+                  log.push(`✅ Times: ${total} jogadores distribuídos`);
+                  Object.entries(newDrawn).forEach(([k, ps]) => {
+                    if (ps.length) log.push(`  ${(TEAMS_CFG[k] as any).emoji} ${(TEAMS_CFG[k] as any).label}: ${(ps as any[]).map((p: any) => p.name).join(', ')}`);
+                  });
+                }
+              }
 
-                      // 2. Times sorteados
-                      if (parsed.times) {
-                        const newDrawn: Record<string, any[]> = {};
-                        let totalAssigned = 0;
-                        Object.entries(parsed.times).forEach(([teamKey, names]) => {
-                          if (!TEAMS_CFG[teamKey]) return;
-                          const teamPlayers = (names as string[]).map(name => {
-                            const found = players.find(p =>
-                              normalizeName(p.name) === normalizeName(name) ||
-                              normalizeName(p.name).includes(normalizeName(name)) ||
-                              normalizeName(name).includes(normalizeName(p.name))
-                            );
-                            return found || null;
-                          }).filter(Boolean);
-                          newDrawn[teamKey] = teamPlayers;
-                          totalAssigned += teamPlayers.length;
-                        });
-                        if (totalAssigned > 0) {
-                          updateDrawn(newDrawn);
-                          log.push(`✅ Times: ${totalAssigned} jogadores distribuídos`);
-                        }
-                      }
+              // Preencher lista também se veio
+              if (parsed.lista?.length && lista.slots.length === 0) {
+                const newSlots = parsed.lista.map((name: string) => ({ name }));
+                updateLista({ ...lista, slots: newSlots });
+                log.push(`✅ Lista: ${parsed.lista.length} jogadores`);
+              }
 
-                      // 3. Rodadas
-                      if (parsed.rodadas?.length) {
-                        const newRounds = rounds.map(r => {
-                          const imported = parsed.rodadas.find((ir: any) => ir.id === r.id);
-                          if (!imported) return r;
-                          return {
-                            ...r,
-                            pairs: r.pairs.map((pair, pi) => {
-                              const ip = imported.pairs?.[pi];
-                              if (!ip) return pair;
-                              return { ...pair, sA: ip.sA ?? pair.sA, sB: ip.sB ?? pair.sB };
-                            }),
-                          };
-                        });
-                        updateRounds(newRounds);
-                        log.push(`✅ Placares: ${parsed.rodadas.length} rodadas`);
-                      }
+              if (log.length === 0) throw new Error('Nenhum time identificado na imagem');
+              setImportResult('🎉 Times importados!\n\n' + log.join('\n'));
+            } catch (err: any) {
+              setImportResult('❌ Erro: ' + (err.message || 'Falha ao processar imagem'));
+            } finally {
+              setImportLoading(false);
+            }
+          };
 
-                      // 4. Final
-                      if (parsed.final) {
-                        const f = parsed.final;
-                        const newFinale = {
-                          tA: f.tA || finale.tA,
-                          tB: f.tB || finale.tB,
-                          sA: f.sA ?? finale.sA,
-                          sB: f.sB ?? finale.sB,
-                          penaltyWinner: '',
-                        };
-                        updateFinale(newFinale);
-                        log.push(`✅ Final: ${TEAMS_CFG[newFinale.tA]?.label} ${newFinale.sA} × ${newFinale.sB} ${TEAMS_CFG[newFinale.tB]?.label}`);
-                      }
+          return (
+            <div className="overlay" onClick={() => !importLoading && setShowImport(false)}>
+              <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 420, maxHeight: '92vh', overflowY: 'auto' }}>
+                <div style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 22, color: '#38bdf8', marginBottom: 12, letterSpacing: 2 }}>
+                  📥 IMPORTAR
+                </div>
 
-                      // 5. Gols
-                      if (parsed.gols && Object.keys(parsed.gols).length > 0) {
-                        const newScorers: Record<number, number> = {};
-                        Object.entries(parsed.gols).forEach(([name, goals]) => {
-                          const found = players.find(p =>
-                            normalizeName(p.name) === normalizeName(name) ||
-                            normalizeName(p.name).includes(normalizeName(name)) ||
-                            normalizeName(name).includes(normalizeName(p.name))
-                          );
-                          if (found) newScorers[found.id] = Number(goals);
-                        });
-                        updateScorers(newScorers);
-                        log.push(`✅ Gols: ${Object.keys(newScorers).length} artilheiros`);
-                      }
+                {/* Abas */}
+                <div style={{ display: 'flex', background: '#111', border: '1px solid #1f1f1f', borderRadius: 10, padding: 3, gap: 3, marginBottom: 16 }}>
+                  {[
+                    { k: 'lista', icon: '📋', label: 'Lista de presentes' },
+                    { k: 'times', icon: '🎲', label: 'Foto dos times' },
+                  ].map(t => (
+                    <button key={t.k} onClick={() => { setImportTab(t.k); setImportResult(null); }}
+                      style={{ flex: 1, background: importTab === t.k ? '#0d1f2e' : 'none', border: importTab === t.k ? '1px solid #1e3a5f' : '1px solid transparent', borderRadius: 8, padding: '8px 4px', color: importTab === t.k ? '#38bdf8' : '#444', fontFamily: "'Barlow',sans-serif", fontWeight: 700, fontSize: 12, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, transition: 'all .15s' }}>
+                      {t.icon} {t.label}
+                    </button>
+                  ))}
+                </div>
 
-                      if (log.length === 0) {
-                        setImportResult('⚠️ Não consegui identificar dados no texto. Tente usar o template como base.');
-                      } else {
-                        setImportResult('🎉 Importado com sucesso!\n\n' + log.join('\n'));
-                      }
-                    } catch (err: any) {
-                      setImportResult('❌ Erro: ' + (err.message || 'Falha ao processar o texto'));
-                    } finally {
-                      setImportLoading(false);
-                    }
-                  }}
-                >
-                  {importLoading ? '⏳ Interpretando...' : '🤖 IMPORTAR COM IA'}
-                </button>
+                {/* Aba: Lista */}
+                {importTab === 'lista' && (
+                  <>
+                    <div style={{ fontSize: 11, color: '#555', marginBottom: 10 }}>
+                      Cole a lista do WhatsApp — numerada ou não. A IA extrai os nomes e preenche os presentes.
+                    </div>
+                    <textarea
+                      className="inp"
+                      style={{ height: 180, resize: 'vertical', fontFamily: 'monospace', fontSize: 12, lineHeight: 1.7, marginBottom: 10 }}
+                      placeholder={`1. Moche\n2. G. Moreira\n3. Je\n4. Dener\n...`}
+                      value={importText}
+                      onChange={e => setImportText(e.target.value)}
+                    />
+                    {importResult && (
+                      <div style={{ background: importResult.startsWith('❌') ? '#1a0808' : '#0a1f0a', border: `1px solid ${importResult.startsWith('❌') ? '#ef444433' : '#22c55e33'}`, borderRadius: 8, padding: '10px 12px', marginBottom: 10, fontSize: 11, color: importResult.startsWith('❌') ? '#ef4444' : '#4ade80', whiteSpace: 'pre-wrap', lineHeight: 1.6 }}>
+                        {importResult}
+                      </div>
+                    )}
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <button className="btn2" style={{ flex: 1, padding: 10 }} onClick={() => setShowImport(false)} disabled={importLoading}>Cancelar</button>
+                      <button className="btn" style={{ flex: 2, background: importLoading ? '#1a3a1a' : 'linear-gradient(135deg,#0369a1,#38bdf8)', opacity: importLoading ? 0.7 : 1 }}
+                        disabled={importLoading || !importText.trim()} onClick={doImportLista}>
+                        {importLoading ? '⏳ Processando...' : '🤖 PREENCHER LISTA'}
+                      </button>
+                    </div>
+                  </>
+                )}
+
+                {/* Aba: Foto dos times */}
+                {importTab === 'times' && (
+                  <>
+                    <div style={{ fontSize: 11, color: '#555', marginBottom: 10 }}>
+                      Envie a foto ou print do sorteio dos times. A IA lê a imagem e distribui os jogadores automaticamente.
+                    </div>
+
+                    {/* Upload da imagem */}
+                    {importImage ? (
+                      <div style={{ position: 'relative', marginBottom: 10 }}>
+                        <img src={importImage} alt="times" style={{ width: '100%', borderRadius: 10, maxHeight: 220, objectFit: 'contain', background: '#0a0a0a' }} />
+                        <button onClick={() => { setImportImage(null); setImportResult(null); }}
+                          style={{ position: 'absolute', top: 6, right: 6, background: '#1a0a0a', border: '1px solid #ef4444', color: '#ef4444', borderRadius: 6, padding: '3px 8px', fontSize: 11, cursor: 'pointer' }}>
+                          ✕ Trocar
+                        </button>
+                      </div>
+                    ) : (
+                      <label style={{ display: 'block', background: '#0d1f2e', border: '2px dashed #1e3a5f', borderRadius: 10, padding: '28px 16px', textAlign: 'center', color: '#38bdf8', fontSize: 13, fontWeight: 700, cursor: 'pointer', marginBottom: 10, letterSpacing: 0.5 }}>
+                        📸 TOQUE PARA ENVIAR A FOTO DOS TIMES
+                        <div style={{ fontSize: 10, color: '#2a4a6a', fontWeight: 400, marginTop: 6 }}>Print do app, foto do quadro, imagem do WhatsApp...</div>
+                        <input type="file" accept="image/*" style={{ display: 'none' }} onChange={e => {
+                          const file = e.target.files?.[0];
+                          if (!file) return;
+                          const reader = new FileReader();
+                          reader.onload = ev => setImportImage(ev.target?.result as string);
+                          reader.readAsDataURL(file);
+                        }} />
+                      </label>
+                    )}
+
+                    {importResult && (
+                      <div style={{ background: importResult.startsWith('❌') ? '#1a0808' : '#0a1f0a', border: `1px solid ${importResult.startsWith('❌') ? '#ef444433' : '#22c55e33'}`, borderRadius: 8, padding: '10px 12px', marginBottom: 10, fontSize: 11, color: importResult.startsWith('❌') ? '#ef4444' : '#4ade80', whiteSpace: 'pre-wrap', lineHeight: 1.6 }}>
+                        {importResult}
+                    </div>
+                    )}
+
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <button className="btn2" style={{ flex: 1, padding: 10 }} onClick={() => setShowImport(false)} disabled={importLoading}>Cancelar</button>
+                      <button className="btn" style={{ flex: 2, background: importLoading ? '#1a3a1a' : 'linear-gradient(135deg,#065f46,#22c55e)', opacity: (!importImage || importLoading) ? 0.5 : 1 }}
+                        disabled={importLoading || !importImage} onClick={doImportTimes}>
+                        {importLoading ? '⏳ Lendo imagem...' : '🤖 LER FOTO E IMPORTAR TIMES'}
+                      </button>
+                    </div>
+                  </>
+                )}
               </div>
             </div>
-          </div>
-        )}
+          );
+        })()}
 
 
         {numTimes === 5 ? renderRounds5() : renderRounds4()}

@@ -2237,8 +2237,11 @@ const [loading, setLoading] = useState(true);
 
     // Final
     const cfgA = TEAMS_CFG[finale.tA], cfgB = TEAMS_CFG[finale.tB];
-    ctx.fillStyle = '#1a1200'; ctx.beginPath(); ctx.roundRect(PAD, y, W - PAD * 2, FINAL_H - 10, 10); ctx.fill();
-    ctx.strokeStyle = '#f59e0b33'; ctx.lineWidth = 1; ctx.beginPath(); ctx.roundRect(PAD, y, W - PAD * 2, FINAL_H - 10, 10); ctx.stroke();
+    const isEmpateF = finale.sA !== '' && finale.sB !== '' && parseInt(finale.sA) === parseInt(finale.sB);
+    const pwCfg = finale.penaltyWinner ? TEAMS_CFG[finale.penaltyWinner] : null;
+    const FINAL_EXTRA = isEmpateF && pwCfg ? 22 : 0;
+    ctx.fillStyle = '#1a1200'; ctx.beginPath(); ctx.roundRect(PAD, y, W - PAD * 2, FINAL_H - 10 + FINAL_EXTRA, 10); ctx.fill();
+    ctx.strokeStyle = '#f59e0b33'; ctx.lineWidth = 1; ctx.beginPath(); ctx.roundRect(PAD, y, W - PAD * 2, FINAL_H - 10 + FINAL_EXTRA, 10); ctx.stroke();
     ctx.textAlign = 'center'; ctx.fillStyle = '#f59e0b'; ctx.font = 'bold 11px Arial'; ctx.fillText('🏆 GRANDE FINAL', W / 2, y + 18);
 
     const finalLineY = y + 50;
@@ -2258,6 +2261,13 @@ const [loading, setLoading] = useState(true);
     }
 
     ctx.textAlign = 'left'; ctx.fillStyle = cfgB.color; ctx.font = 'bold 13px Arial'; ctx.fillText(cfgB.emoji + ' ' + cfgB.label, rightTeamX, finalLineY);
+
+    // Pênaltis
+    if (isEmpateF && pwCfg) {
+      const penY = finalLineY + 22;
+      ctx.textAlign = 'center'; ctx.fillStyle = pwCfg.color; ctx.font = 'bold 11px Arial';
+      ctx.fillText(`⚽ Pênaltis: ${pwCfg.emoji} ${pwCfg.label} 🏆`, W / 2, penY);
+    }
 
     canvas.toBlob((blob) => {
       if (!blob) return;

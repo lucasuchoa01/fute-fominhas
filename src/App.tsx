@@ -3911,7 +3911,7 @@ const [loading, setLoading] = useState(true);
                 {(['lista', 'times'] as const).map(k => (
                   <button key={k} onClick={() => { setImportTab(k); setImportResult(null); }}
                     style={{ flex: 1, background: importTab === k ? '#0d1f2e' : 'none', border: importTab === k ? '1px solid #1e3a5f' : '1px solid transparent', borderRadius: 8, padding: '8px 4px', color: importTab === k ? '#38bdf8' : '#444', fontFamily: "'Barlow',sans-serif", fontWeight: 700, fontSize: 12, cursor: 'pointer', transition: 'all .15s' }}>
-                    {k === 'lista' ? '📋 Lista de presentes' : '🎲 Foto dos times'}
+                    {k === 'lista' ? '📋 Lista de presentes' : '⚽ Times sorteados'}
                   </button>
                 ))}
               </div>
@@ -3962,82 +3962,105 @@ const [loading, setLoading] = useState(true);
                 </>
               )}
 
-              {/* Aba: Foto dos times */}
+              {/* Aba: Times por texto */}
               {importTab === 'times' && (
                 <>
-                  <div style={{ fontSize: 11, color: '#555', marginBottom: 10 }}>
-                    Envie a foto ou print do sorteio. A IA lê a imagem e distribui os jogadores automaticamente.
-                  </div>
-                  {importImage ? (
-                    <div style={{ position: 'relative', marginBottom: 10 }}>
-                      <img src={importImage} alt="times" style={{ width: '100%', borderRadius: 10, maxHeight: 220, objectFit: 'contain', background: '#0a0a0a' }} />
-                      <button onClick={() => { setImportImage(null); setImportResult(null); }}
-                        style={{ position: 'absolute', top: 6, right: 6, background: '#1a0a0a', border: '1px solid #ef4444', color: '#ef4444', borderRadius: 6, padding: '3px 8px', fontSize: 11, cursor: 'pointer' }}>
-                        ✕ Trocar
+                  {/* Template dinâmico */}
+                  <div style={{ background: '#080808', border: '1px solid #1a1a1a', borderRadius: 8, padding: '10px 12px', marginBottom: 10 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                      <span style={{ fontSize: 10, color: '#22c55e', fontWeight: 700, letterSpacing: 1 }}>FORMATO</span>
+                      <button
+                        onClick={() => {
+                          const template = Object.entries(TEAMS_CFG)
+                            .map(([, c]) => `${(c as any).label}: jogador1, jogador2, jogador3, jogador4, jogador5`)
+                            .join('\n');
+                          setImportText(template);
+                        }}
+                        style={{ background: '#0d1f0d', border: '1px solid #2d5a2d', borderRadius: 6, padding: '2px 10px', color: '#4ade80', fontSize: 10, cursor: 'pointer', fontWeight: 700 }}
+                      >
+                        USAR TEMPLATE
                       </button>
                     </div>
-                  ) : (
-                    <label style={{ display: 'block', background: '#0d1f2e', border: '2px dashed #1e3a5f', borderRadius: 10, padding: '28px 16px', textAlign: 'center', color: '#38bdf8', fontSize: 13, fontWeight: 700, cursor: 'pointer', marginBottom: 10 }}>
-                      📸 TOQUE PARA ENVIAR A FOTO DOS TIMES
-                      <div style={{ fontSize: 10, color: '#2a4a6a', fontWeight: 400, marginTop: 6 }}>Print do app, foto do quadro, imagem do WhatsApp...</div>
-                      <input type="file" accept="image/*" style={{ display: 'none' }} onChange={e => {
-                        const file = e.target.files?.[0]; if (!file) return;
-                        const reader = new FileReader();
-                        reader.onload = ev => setImportImage(ev.target?.result as string);
-                        reader.readAsDataURL(file);
-                      }} />
-                    </label>
-                  )}
+                    <div style={{ fontFamily: 'monospace', fontSize: 11, color: '#333', lineHeight: 1.7 }}>
+                      {Object.values(TEAMS_CFG).map((c: any) => (
+                        <div key={c.label}>{c.emoji} <span style={{ color: c.color }}>{c.label}</span>: j1, j2, j3...</div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <textarea className="inp"
+                    style={{ height: 160, resize: 'vertical', fontFamily: 'monospace', fontSize: 12, lineHeight: 1.7, marginBottom: 10 }}
+                    placeholder={Object.values(TEAMS_CFG).map((c: any) => `${c.label}: j1, j2, j3, j4, j5`).join('\n')}
+                    value={importText}
+                    onChange={e => setImportText(e.target.value)}
+                  />
+
                   {importResult && (
                     <div style={{ background: importResult.startsWith('❌') ? '#1a0808' : '#0a1f0a', border: `1px solid ${importResult.startsWith('❌') ? '#ef444433' : '#22c55e33'}`, borderRadius: 8, padding: '10px 12px', marginBottom: 10, fontSize: 11, color: importResult.startsWith('❌') ? '#ef4444' : '#4ade80', whiteSpace: 'pre-wrap', lineHeight: 1.6 }}>
                       {importResult}
                     </div>
                   )}
+
                   <div style={{ display: 'flex', gap: 8 }}>
-                    <button className="btn2" style={{ flex: 1, padding: 10 }} onClick={() => setShowImport(false)} disabled={importLoading}>Cancelar</button>
+                    <button className="btn2" style={{ flex: 1, padding: 10 }} onClick={() => setShowImport(false)}>Cancelar</button>
                     <button className="btn"
-                      style={{ flex: 2, background: importLoading ? '#1a3a1a' : 'linear-gradient(135deg,#065f46,#22c55e)', opacity: (!importImage || importLoading) ? 0.5 : 1 }}
-                      disabled={importLoading || !importImage}
-                      onClick={async () => {
-                        if (!importImage) return;
-                        setImportLoading(true); setImportResult(null);
+                      style={{ flex: 2, background: 'linear-gradient(135deg,#065f46,#22c55e)', opacity: !importText.trim() ? 0.5 : 1 }}
+                      disabled={!importText.trim()}
+                      onClick={() => {
                         try {
-                          const tn = Object.entries(TEAMS_CFG).map(([k, c]) => `"${k}": "${(c as any).label}"`).join(', ');
-                          const pn = players.map(p => p.name).join(', ');
-                          const b64 = importImage.split(',')[1];
-                          const mt = importImage.split(';')[0].split(':')[1];
-                          const pr = `Analise a imagem de sorteio de futsal.\nTimes (use estas chaves): ${tn}\nJogadores cadastrados (fuzzy match): ${pn}\nRetorne SOMENTE JSON:\n{"times":{"azul":[],"vermelho":[],"amarelo":[],"verde":[]},"lista":[]}\nUse fuzzy match. Retorne APENAS o JSON.`;
-                          const res = await fetch('https://api.anthropic.com/v1/messages', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ model: 'claude-sonnet-4-6', max_tokens: 800, messages: [{ role: 'user', content: [{ type: 'image', source: { type: 'base64', media_type: mt, data: b64 } }, { type: 'text', text: pr }] }] }) });
-                          const data = await res.json();
-                          const raw = data.content?.find((c: any) => c.type === 'text')?.text || '';
-                          const jm = raw.match(/\{[\s\S]*\}/);
-                          if (!jm) throw new Error('IA não retornou JSON válido');
-                          const parsed = JSON.parse(jm[0]);
-                          let log: string[] = [];
-                          if (parsed.times) {
-                            const nd: Record<string, any[]> = {}; let tot = 0;
-                            Object.entries(parsed.times).forEach(([tk, names]) => {
-                              if (!TEAMS_CFG[tk]) return;
-                              const tp = (names as string[]).map((n: string) => players.find(p => normalizeName(p.name) === normalizeName(n) || normalizeName(p.name).includes(normalizeName(n)) || normalizeName(n).includes(normalizeName(p.name))) || null).filter(Boolean);
-                              nd[tk] = tp; tot += tp.length;
-                            });
-                            if (tot > 0) {
-                              updateDrawn(nd);
-                              log.push(`✅ Times: ${tot} jogadores distribuídos`);
-                              Object.entries(nd).forEach(([k, ps]) => { if (ps.length) log.push(`  ${(TEAMS_CFG[k] as any).emoji} ${(TEAMS_CFG[k] as any).label}: ${(ps as any[]).map((p: any) => p.name).join(', ')}`); });
-                            }
+                          // Mapear nomes de times para chaves
+                          const labelToKey: Record<string, string> = {};
+                          Object.entries(TEAMS_CFG).forEach(([k, c]) => {
+                            labelToKey[normalizeName((c as any).label)] = k;
+                            labelToKey[k] = k; // aceita a chave direta também
+                          });
+
+                          const newDrawn: Record<string, any[]> = {};
+                          let totalAssigned = 0;
+                          const lines = importText.split('\n').filter(l => l.trim());
+
+                          for (const line of lines) {
+                            const colonIdx = line.indexOf(':');
+                            if (colonIdx === -1) continue;
+                            const rawTeam = line.slice(0, colonIdx).trim();
+                            const rawNames = line.slice(colonIdx + 1).split(',').map(n => n.trim()).filter(Boolean);
+
+                            // Descobrir a chave do time (por label ou por chave direta)
+                            const teamKey = labelToKey[normalizeName(rawTeam)];
+                            if (!teamKey || !TEAMS_CFG[teamKey]) continue;
+
+                            const teamPlayers = rawNames.map(name => {
+                              return players.find(p =>
+                                normalizeName(p.name) === normalizeName(name) ||
+                                normalizeName(p.name).includes(normalizeName(name)) ||
+                                normalizeName(name).includes(normalizeName(p.name))
+                              ) || null;
+                            }).filter(Boolean);
+
+                            newDrawn[teamKey] = teamPlayers;
+                            totalAssigned += teamPlayers.length;
                           }
-                          if (parsed.lista?.length && lista.slots.length === 0) {
-                            updateLista({ ...lista, slots: parsed.lista.map((n: string) => ({ name: n })) });
-                            log.push(`✅ Lista: ${parsed.lista.length} jogadores`);
+
+                          if (totalAssigned === 0) throw new Error('Nenhum jogador reconhecido. Verifique os nomes dos times e jogadores.');
+
+                          updateDrawn(newDrawn);
+
+                          // Preencher lista também se estiver vazia
+                          if (lista.slots.length === 0) {
+                            const allPlayers = Object.values(newDrawn).flat() as any[];
+                            updateLista({ ...lista, slots: allPlayers.map((p: any) => ({ name: p.name })) });
                           }
-                          if (!log.length) throw new Error('Nenhum time identificado na imagem');
+
+                          let log = [`✅ ${totalAssigned} jogadores distribuídos:`];
+                          Object.entries(newDrawn).forEach(([k, ps]) => {
+                            if (ps.length) log.push(`  ${(TEAMS_CFG[k] as any).emoji} ${(TEAMS_CFG[k] as any).label}: ${(ps as any[]).map((p: any) => p.name).join(', ')}`);
+                          });
                           setImportResult('🎉 Times importados!\n\n' + log.join('\n'));
                         } catch (err: any) {
-                          setImportResult('❌ Erro: ' + (err.message || 'Falha'));
-                        } finally { setImportLoading(false); }
+                          setImportResult('❌ Erro: ' + (err.message || 'Verifique o formato'));
+                        }
                       }}>
-                      {importLoading ? '⏳ Lendo imagem...' : '🤖 LER FOTO E IMPORTAR TIMES'}
+                      ⚡ IMPORTAR TIMES
                     </button>
                   </div>
                 </>

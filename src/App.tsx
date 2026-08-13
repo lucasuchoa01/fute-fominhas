@@ -1535,6 +1535,8 @@ const [loading, setLoading] = useState(true);
   const [importText, setImportText] = useState('');
   const [importLoading, setImportLoading] = useState(false);
   const [importResult, setImportResult] = useState<string | null>(null);
+  const [importTab, setImportTab] = useState<'lista' | 'times'>('lista');
+  const [importImage, setImportImage] = useState<string | null>(null);
 
   // Sync TEAM_SIZE global with state
   TEAM_SIZE = teamSize;
@@ -3897,250 +3899,152 @@ const [loading, setLoading] = useState(true);
         </div>
 
         {/* ── MODAL DE IMPORTAÇÃO ── */}
-        {showImport && (() => {
-          const [importTab, setImportTab] = (React as any).useState('lista'); // 'lista' | 'times'
-          const [importImage, setImportImage] = (React as any).useState<string | null>(null);
-
-          const doImportLista = async () => {
-            if (!importText.trim()) return;
-            setImportLoading(true);
-            setImportResult(null);
-            try {
-              const playerNames = players.map(p => p.name).join(', ');
-              const prompt = `Você recebe uma lista de jogadores presentes em um jogo de futsal e retorna JSON.
-
-Jogadores cadastrados no sistema (faça fuzzy match): ${playerNames}
-
-Lista recebida:
-${importText}
-
-Retorne SOMENTE JSON válido:
-{"lista": ["nome1", "nome2", ...]}
-
-Regras:
-- Extraia apenas os nomes, ignorando números, emojis, textos como "Presentes", "Ausentes" etc
-- Para cada nome encontrado, use o nome mais próximo da lista de cadastrados (fuzzy match)
-- Se não encontrar correspondência, use o nome como está no texto
-- Retorne APENAS o JSON`;
-
-              const res = await fetch('https://api.anthropic.com/v1/messages', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                  model: 'claude-sonnet-4-6',
-                  max_tokens: 500,
-                  messages: [{ role: 'user', content: prompt }],
-                }),
-              });
-              const data = await res.json();
-              const raw = data.content?.find((c: any) => c.type === 'text')?.text || '';
-              const jsonMatch = raw.match(/\{[\s\S]*\}/);
-              if (!jsonMatch) throw new Error('IA não retornou JSON válido');
-              const parsed = JSON.parse(jsonMatch[0]);
-              if (!parsed.lista?.length) throw new Error('Nenhum jogador encontrado no texto');
-              const newSlots = parsed.lista.map((name: string) => ({ name }));
-              updateLista({ ...lista, slots: newSlots });
-              setImportResult(`✅ Lista preenchida com ${parsed.lista.length} jogadores:\n${parsed.lista.join(', ')}`);
-            } catch (err: any) {
-              setImportResult('❌ Erro: ' + (err.message || 'Falha ao processar'));
-            } finally {
-              setImportLoading(false);
-            }
-          };
-
-          const doImportTimes = async () => {
-            if (!importImage) return;
-            setImportLoading(true);
-            setImportResult(null);
-            try {
-              const teamNames = Object.entries(TEAMS_CFG).map(([k, c]) => `"${k}": "${(c as any).label}"`).join(', ');
-              const playerNames = players.map(p => p.name).join(', ');
-              const base64 = importImage.split(',')[1];
-              const mediaType = importImage.split(';')[0].split(':')[1];
-
-              const prompt = `Você analisa uma imagem de sorteio de times de futsal e retorna JSON.
-
-Times disponíveis (use exatamente estas chaves): ${teamNames}
-Jogadores cadastrados (faça fuzzy match): ${playerNames}
-
-Identifique a qual time cada jogador foi sorteado na imagem e retorne SOMENTE JSON:
-{
-  "times": {
-    "azul": ["nome1", "nome2", "nome3", "nome4", "nome5"],
-    "vermelho": ["nome1", "nome2", "nome3", "nome4", "nome5"],
-    "amarelo": ["nome1", "nome2", "nome3", "nome4", "nome5"],
-    "verde": ["nome1", "nome2", "nome3", "nome4", "nome5"]
-  },
-  "lista": ["todos", "os", "jogadores", "encontrados"]
-}
-
-Regras:
-- Use fuzzy match com a lista de jogadores cadastrados para corrigir nomes
-- As chaves devem ser exatamente: vermelho, azul, amarelo, verde (e "preto" se houver 5 times)
-- Inclua também "lista" com todos os jogadores encontrados na imagem
-- Retorne APENAS o JSON, sem explicações`;
-
-              const res = await fetch('https://api.anthropic.com/v1/messages', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                  model: 'claude-sonnet-4-6',
-                  max_tokens: 800,
-                  messages: [{
-                    role: 'user',
-                    content: [
-                      { type: 'image', source: { type: 'base64', media_type: mediaType, data: base64 } },
-                      { type: 'text', text: prompt },
-                    ],
-                  }],
-                }),
-              });
-              const data = await res.json();
-              const raw = data.content?.find((c: any) => c.type === 'text')?.text || '';
-              const jsonMatch = raw.match(/\{[\s\S]*\}/);
-              if (!jsonMatch) throw new Error('IA não retornou JSON válido');
-              const parsed = JSON.parse(jsonMatch[0]);
-
-              let log: string[] = [];
-
-              // Preencher times
-              if (parsed.times) {
-                const newDrawn: Record<string, any[]> = {};
-                let total = 0;
-                Object.entries(parsed.times).forEach(([teamKey, names]) => {
-                  if (!TEAMS_CFG[teamKey]) return;
-                  const teamPlayers = (names as string[]).map((name: string) => {
-                    return players.find(p =>
-                      normalizeName(p.name) === normalizeName(name) ||
-                      normalizeName(p.name).includes(normalizeName(name)) ||
-                      normalizeName(name).includes(normalizeName(p.name))
-                    ) || null;
-                  }).filter(Boolean);
-                  newDrawn[teamKey] = teamPlayers;
-                  total += teamPlayers.length;
-                });
-                if (total > 0) {
-                  updateDrawn(newDrawn);
-                  log.push(`✅ Times: ${total} jogadores distribuídos`);
-                  Object.entries(newDrawn).forEach(([k, ps]) => {
-                    if (ps.length) log.push(`  ${(TEAMS_CFG[k] as any).emoji} ${(TEAMS_CFG[k] as any).label}: ${(ps as any[]).map((p: any) => p.name).join(', ')}`);
-                  });
-                }
-              }
-
-              // Preencher lista também se veio
-              if (parsed.lista?.length && lista.slots.length === 0) {
-                const newSlots = parsed.lista.map((name: string) => ({ name }));
-                updateLista({ ...lista, slots: newSlots });
-                log.push(`✅ Lista: ${parsed.lista.length} jogadores`);
-              }
-
-              if (log.length === 0) throw new Error('Nenhum time identificado na imagem');
-              setImportResult('🎉 Times importados!\n\n' + log.join('\n'));
-            } catch (err: any) {
-              setImportResult('❌ Erro: ' + (err.message || 'Falha ao processar imagem'));
-            } finally {
-              setImportLoading(false);
-            }
-          };
-
-          return (
-            <div className="overlay" onClick={() => !importLoading && setShowImport(false)}>
-              <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 420, maxHeight: '92vh', overflowY: 'auto' }}>
-                <div style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 22, color: '#38bdf8', marginBottom: 12, letterSpacing: 2 }}>
-                  📥 IMPORTAR
-                </div>
-
-                {/* Abas */}
-                <div style={{ display: 'flex', background: '#111', border: '1px solid #1f1f1f', borderRadius: 10, padding: 3, gap: 3, marginBottom: 16 }}>
-                  {[
-                    { k: 'lista', icon: '📋', label: 'Lista de presentes' },
-                    { k: 'times', icon: '🎲', label: 'Foto dos times' },
-                  ].map(t => (
-                    <button key={t.k} onClick={() => { setImportTab(t.k); setImportResult(null); }}
-                      style={{ flex: 1, background: importTab === t.k ? '#0d1f2e' : 'none', border: importTab === t.k ? '1px solid #1e3a5f' : '1px solid transparent', borderRadius: 8, padding: '8px 4px', color: importTab === t.k ? '#38bdf8' : '#444', fontFamily: "'Barlow',sans-serif", fontWeight: 700, fontSize: 12, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, transition: 'all .15s' }}>
-                      {t.icon} {t.label}
-                    </button>
-                  ))}
-                </div>
-
-                {/* Aba: Lista */}
-                {importTab === 'lista' && (
-                  <>
-                    <div style={{ fontSize: 11, color: '#555', marginBottom: 10 }}>
-                      Cole a lista do WhatsApp — numerada ou não. A IA extrai os nomes e preenche os presentes.
-                    </div>
-                    <textarea
-                      className="inp"
-                      style={{ height: 180, resize: 'vertical', fontFamily: 'monospace', fontSize: 12, lineHeight: 1.7, marginBottom: 10 }}
-                      placeholder={`1. Moche\n2. G. Moreira\n3. Je\n4. Dener\n...`}
-                      value={importText}
-                      onChange={e => setImportText(e.target.value)}
-                    />
-                    {importResult && (
-                      <div style={{ background: importResult.startsWith('❌') ? '#1a0808' : '#0a1f0a', border: `1px solid ${importResult.startsWith('❌') ? '#ef444433' : '#22c55e33'}`, borderRadius: 8, padding: '10px 12px', marginBottom: 10, fontSize: 11, color: importResult.startsWith('❌') ? '#ef4444' : '#4ade80', whiteSpace: 'pre-wrap', lineHeight: 1.6 }}>
-                        {importResult}
-                      </div>
-                    )}
-                    <div style={{ display: 'flex', gap: 8 }}>
-                      <button className="btn2" style={{ flex: 1, padding: 10 }} onClick={() => setShowImport(false)} disabled={importLoading}>Cancelar</button>
-                      <button className="btn" style={{ flex: 2, background: importLoading ? '#1a3a1a' : 'linear-gradient(135deg,#0369a1,#38bdf8)', opacity: importLoading ? 0.7 : 1 }}
-                        disabled={importLoading || !importText.trim()} onClick={doImportLista}>
-                        {importLoading ? '⏳ Processando...' : '🤖 PREENCHER LISTA'}
-                      </button>
-                    </div>
-                  </>
-                )}
-
-                {/* Aba: Foto dos times */}
-                {importTab === 'times' && (
-                  <>
-                    <div style={{ fontSize: 11, color: '#555', marginBottom: 10 }}>
-                      Envie a foto ou print do sorteio dos times. A IA lê a imagem e distribui os jogadores automaticamente.
-                    </div>
-
-                    {/* Upload da imagem */}
-                    {importImage ? (
-                      <div style={{ position: 'relative', marginBottom: 10 }}>
-                        <img src={importImage} alt="times" style={{ width: '100%', borderRadius: 10, maxHeight: 220, objectFit: 'contain', background: '#0a0a0a' }} />
-                        <button onClick={() => { setImportImage(null); setImportResult(null); }}
-                          style={{ position: 'absolute', top: 6, right: 6, background: '#1a0a0a', border: '1px solid #ef4444', color: '#ef4444', borderRadius: 6, padding: '3px 8px', fontSize: 11, cursor: 'pointer' }}>
-                          ✕ Trocar
-                        </button>
-                      </div>
-                    ) : (
-                      <label style={{ display: 'block', background: '#0d1f2e', border: '2px dashed #1e3a5f', borderRadius: 10, padding: '28px 16px', textAlign: 'center', color: '#38bdf8', fontSize: 13, fontWeight: 700, cursor: 'pointer', marginBottom: 10, letterSpacing: 0.5 }}>
-                        📸 TOQUE PARA ENVIAR A FOTO DOS TIMES
-                        <div style={{ fontSize: 10, color: '#2a4a6a', fontWeight: 400, marginTop: 6 }}>Print do app, foto do quadro, imagem do WhatsApp...</div>
-                        <input type="file" accept="image/*" style={{ display: 'none' }} onChange={e => {
-                          const file = e.target.files?.[0];
-                          if (!file) return;
-                          const reader = new FileReader();
-                          reader.onload = ev => setImportImage(ev.target?.result as string);
-                          reader.readAsDataURL(file);
-                        }} />
-                      </label>
-                    )}
-
-                    {importResult && (
-                      <div style={{ background: importResult.startsWith('❌') ? '#1a0808' : '#0a1f0a', border: `1px solid ${importResult.startsWith('❌') ? '#ef444433' : '#22c55e33'}`, borderRadius: 8, padding: '10px 12px', marginBottom: 10, fontSize: 11, color: importResult.startsWith('❌') ? '#ef4444' : '#4ade80', whiteSpace: 'pre-wrap', lineHeight: 1.6 }}>
-                        {importResult}
-                    </div>
-                    )}
-
-                    <div style={{ display: 'flex', gap: 8 }}>
-                      <button className="btn2" style={{ flex: 1, padding: 10 }} onClick={() => setShowImport(false)} disabled={importLoading}>Cancelar</button>
-                      <button className="btn" style={{ flex: 2, background: importLoading ? '#1a3a1a' : 'linear-gradient(135deg,#065f46,#22c55e)', opacity: (!importImage || importLoading) ? 0.5 : 1 }}
-                        disabled={importLoading || !importImage} onClick={doImportTimes}>
-                        {importLoading ? '⏳ Lendo imagem...' : '🤖 LER FOTO E IMPORTAR TIMES'}
-                      </button>
-                    </div>
-                  </>
-                )}
+        {showImport && (
+          <div className="overlay" onClick={() => !importLoading && setShowImport(false)}>
+            <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 420, maxHeight: '92vh', overflowY: 'auto' }}>
+              <div style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 22, color: '#38bdf8', marginBottom: 12, letterSpacing: 2 }}>
+                📥 IMPORTAR
               </div>
+
+              {/* Abas */}
+              <div style={{ display: 'flex', background: '#111', border: '1px solid #1f1f1f', borderRadius: 10, padding: 3, gap: 3, marginBottom: 16 }}>
+                {(['lista', 'times'] as const).map(k => (
+                  <button key={k} onClick={() => { setImportTab(k); setImportResult(null); }}
+                    style={{ flex: 1, background: importTab === k ? '#0d1f2e' : 'none', border: importTab === k ? '1px solid #1e3a5f' : '1px solid transparent', borderRadius: 8, padding: '8px 4px', color: importTab === k ? '#38bdf8' : '#444', fontFamily: "'Barlow',sans-serif", fontWeight: 700, fontSize: 12, cursor: 'pointer', transition: 'all .15s' }}>
+                    {k === 'lista' ? '📋 Lista de presentes' : '🎲 Foto dos times'}
+                  </button>
+                ))}
+              </div>
+
+              {/* Aba: Lista */}
+              {importTab === 'lista' && (
+                <>
+                  <div style={{ fontSize: 11, color: '#555', marginBottom: 10 }}>
+                    Cole a lista do WhatsApp — numerada ou não. A IA extrai os nomes e preenche os presentes.
+                  </div>
+                  <textarea className="inp"
+                    style={{ height: 180, resize: 'vertical', fontFamily: 'monospace', fontSize: 12, lineHeight: 1.7, marginBottom: 10 }}
+                    placeholder="1. Moche\n2. G. Moreira\n3. Je\n..."
+                    value={importText}
+                    onChange={e => setImportText(e.target.value)}
+                  />
+                  {importResult && (
+                    <div style={{ background: importResult.startsWith('❌') ? '#1a0808' : '#0a1f0a', border: `1px solid ${importResult.startsWith('❌') ? '#ef444433' : '#22c55e33'}`, borderRadius: 8, padding: '10px 12px', marginBottom: 10, fontSize: 11, color: importResult.startsWith('❌') ? '#ef4444' : '#4ade80', whiteSpace: 'pre-wrap', lineHeight: 1.6 }}>
+                      {importResult}
+                    </div>
+                  )}
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <button className="btn2" style={{ flex: 1, padding: 10 }} onClick={() => setShowImport(false)} disabled={importLoading}>Cancelar</button>
+                    <button className="btn"
+                      style={{ flex: 2, background: importLoading ? '#1a3a1a' : 'linear-gradient(135deg,#0369a1,#38bdf8)', opacity: importLoading ? 0.7 : 1 }}
+                      disabled={importLoading || !importText.trim()}
+                      onClick={async () => {
+                        setImportLoading(true); setImportResult(null);
+                        try {
+                          const pn = players.map(p => p.name).join(', ');
+                          const pr = `Você recebe uma lista de jogadores de futsal e retorna JSON.\nJogadores cadastrados (fuzzy match): ${pn}\nLista:\n${importText}\nRetorne SOMENTE: {"lista": ["nome1", ...]}\nExtraia apenas nomes, ignore números e emojis. Use fuzzy match com cadastrados. Retorne APENAS o JSON.`;
+                          const res = await fetch('https://api.anthropic.com/v1/messages', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ model: 'claude-sonnet-4-6', max_tokens: 500, messages: [{ role: 'user', content: pr }] }) });
+                          const data = await res.json();
+                          const raw = data.content?.find((c: any) => c.type === 'text')?.text || '';
+                          const jm = raw.match(/\{[\s\S]*\}/);
+                          if (!jm) throw new Error('IA não retornou JSON válido');
+                          const parsed = JSON.parse(jm[0]);
+                          if (!parsed.lista?.length) throw new Error('Nenhum jogador encontrado');
+                          updateLista({ ...lista, slots: parsed.lista.map((name: string) => ({ name })) });
+                          setImportResult(`✅ Lista preenchida com ${parsed.lista.length} jogadores:\n${parsed.lista.join(', ')}`);
+                        } catch (err: any) {
+                          setImportResult('❌ Erro: ' + (err.message || 'Falha'));
+                        } finally { setImportLoading(false); }
+                      }}>
+                      {importLoading ? '⏳ Processando...' : '🤖 PREENCHER LISTA'}
+                    </button>
+                  </div>
+                </>
+              )}
+
+              {/* Aba: Foto dos times */}
+              {importTab === 'times' && (
+                <>
+                  <div style={{ fontSize: 11, color: '#555', marginBottom: 10 }}>
+                    Envie a foto ou print do sorteio. A IA lê a imagem e distribui os jogadores automaticamente.
+                  </div>
+                  {importImage ? (
+                    <div style={{ position: 'relative', marginBottom: 10 }}>
+                      <img src={importImage} alt="times" style={{ width: '100%', borderRadius: 10, maxHeight: 220, objectFit: 'contain', background: '#0a0a0a' }} />
+                      <button onClick={() => { setImportImage(null); setImportResult(null); }}
+                        style={{ position: 'absolute', top: 6, right: 6, background: '#1a0a0a', border: '1px solid #ef4444', color: '#ef4444', borderRadius: 6, padding: '3px 8px', fontSize: 11, cursor: 'pointer' }}>
+                        ✕ Trocar
+                      </button>
+                    </div>
+                  ) : (
+                    <label style={{ display: 'block', background: '#0d1f2e', border: '2px dashed #1e3a5f', borderRadius: 10, padding: '28px 16px', textAlign: 'center', color: '#38bdf8', fontSize: 13, fontWeight: 700, cursor: 'pointer', marginBottom: 10 }}>
+                      📸 TOQUE PARA ENVIAR A FOTO DOS TIMES
+                      <div style={{ fontSize: 10, color: '#2a4a6a', fontWeight: 400, marginTop: 6 }}>Print do app, foto do quadro, imagem do WhatsApp...</div>
+                      <input type="file" accept="image/*" style={{ display: 'none' }} onChange={e => {
+                        const file = e.target.files?.[0]; if (!file) return;
+                        const reader = new FileReader();
+                        reader.onload = ev => setImportImage(ev.target?.result as string);
+                        reader.readAsDataURL(file);
+                      }} />
+                    </label>
+                  )}
+                  {importResult && (
+                    <div style={{ background: importResult.startsWith('❌') ? '#1a0808' : '#0a1f0a', border: `1px solid ${importResult.startsWith('❌') ? '#ef444433' : '#22c55e33'}`, borderRadius: 8, padding: '10px 12px', marginBottom: 10, fontSize: 11, color: importResult.startsWith('❌') ? '#ef4444' : '#4ade80', whiteSpace: 'pre-wrap', lineHeight: 1.6 }}>
+                      {importResult}
+                    </div>
+                  )}
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <button className="btn2" style={{ flex: 1, padding: 10 }} onClick={() => setShowImport(false)} disabled={importLoading}>Cancelar</button>
+                    <button className="btn"
+                      style={{ flex: 2, background: importLoading ? '#1a3a1a' : 'linear-gradient(135deg,#065f46,#22c55e)', opacity: (!importImage || importLoading) ? 0.5 : 1 }}
+                      disabled={importLoading || !importImage}
+                      onClick={async () => {
+                        if (!importImage) return;
+                        setImportLoading(true); setImportResult(null);
+                        try {
+                          const tn = Object.entries(TEAMS_CFG).map(([k, c]) => `"${k}": "${(c as any).label}"`).join(', ');
+                          const pn = players.map(p => p.name).join(', ');
+                          const b64 = importImage.split(',')[1];
+                          const mt = importImage.split(';')[0].split(':')[1];
+                          const pr = `Analise a imagem de sorteio de futsal.\nTimes (use estas chaves): ${tn}\nJogadores cadastrados (fuzzy match): ${pn}\nRetorne SOMENTE JSON:\n{"times":{"azul":[],"vermelho":[],"amarelo":[],"verde":[]},"lista":[]}\nUse fuzzy match. Retorne APENAS o JSON.`;
+                          const res = await fetch('https://api.anthropic.com/v1/messages', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ model: 'claude-sonnet-4-6', max_tokens: 800, messages: [{ role: 'user', content: [{ type: 'image', source: { type: 'base64', media_type: mt, data: b64 } }, { type: 'text', text: pr }] }] }) });
+                          const data = await res.json();
+                          const raw = data.content?.find((c: any) => c.type === 'text')?.text || '';
+                          const jm = raw.match(/\{[\s\S]*\}/);
+                          if (!jm) throw new Error('IA não retornou JSON válido');
+                          const parsed = JSON.parse(jm[0]);
+                          let log: string[] = [];
+                          if (parsed.times) {
+                            const nd: Record<string, any[]> = {}; let tot = 0;
+                            Object.entries(parsed.times).forEach(([tk, names]) => {
+                              if (!TEAMS_CFG[tk]) return;
+                              const tp = (names as string[]).map((n: string) => players.find(p => normalizeName(p.name) === normalizeName(n) || normalizeName(p.name).includes(normalizeName(n)) || normalizeName(n).includes(normalizeName(p.name))) || null).filter(Boolean);
+                              nd[tk] = tp; tot += tp.length;
+                            });
+                            if (tot > 0) {
+                              updateDrawn(nd);
+                              log.push(`✅ Times: ${tot} jogadores distribuídos`);
+                              Object.entries(nd).forEach(([k, ps]) => { if (ps.length) log.push(`  ${(TEAMS_CFG[k] as any).emoji} ${(TEAMS_CFG[k] as any).label}: ${(ps as any[]).map((p: any) => p.name).join(', ')}`); });
+                            }
+                          }
+                          if (parsed.lista?.length && lista.slots.length === 0) {
+                            updateLista({ ...lista, slots: parsed.lista.map((n: string) => ({ name: n })) });
+                            log.push(`✅ Lista: ${parsed.lista.length} jogadores`);
+                          }
+                          if (!log.length) throw new Error('Nenhum time identificado na imagem');
+                          setImportResult('🎉 Times importados!\n\n' + log.join('\n'));
+                        } catch (err: any) {
+                          setImportResult('❌ Erro: ' + (err.message || 'Falha'));
+                        } finally { setImportLoading(false); }
+                      }}>
+                      {importLoading ? '⏳ Lendo imagem...' : '🤖 LER FOTO E IMPORTAR TIMES'}
+                    </button>
+                  </div>
+                </>
+              )}
             </div>
-          );
-        })()}
+          </div>
+        )}
 
 
         {numTimes === 5 ? renderRounds5() : renderRounds4()}

@@ -2772,7 +2772,7 @@ const [loading, setLoading] = useState(true);
     const mensalistas = players.filter(
       (p) => (p.tipo || 'mensalista') === 'mensalista'
     );
-    const avulsos = players.filter((p) => p.tipo === 'avulso');
+    const avulsos = players.filter((p) => p.tipo === 'avulso').sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
 
     const PlayerCard = ({ p }) => {
       const avg = p.overall ?? avgOverall(p);

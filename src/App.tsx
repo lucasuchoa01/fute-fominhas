@@ -1535,7 +1535,7 @@ const [loading, setLoading] = useState(true);
   const [importText, setImportText] = useState('');
   const [importLoading, setImportLoading] = useState(false);
   const [importResult, setImportResult] = useState<string | null>(null);
-  const [importTab, setImportTab] = useState<'lista' | 'times'>('lista');
+  const [importTab, setImportTab] = useState<'lista' | 'times' | 'resultados' | 'gols'>('lista');
   const [importImage, setImportImage] = useState<string | null>(null);
 
   // Sync TEAM_SIZE global with state
@@ -3917,11 +3917,16 @@ const [loading, setLoading] = useState(true);
               </div>
 
               {/* Abas */}
-              <div style={{ display: 'flex', background: '#111', border: '1px solid #1f1f1f', borderRadius: 10, padding: 3, gap: 3, marginBottom: 16 }}>
-                {(['lista', 'times'] as const).map(k => (
-                  <button key={k} onClick={() => { setImportTab(k); setImportResult(null); }}
-                    style={{ flex: 1, background: importTab === k ? '#0d1f2e' : 'none', border: importTab === k ? '1px solid #1e3a5f' : '1px solid transparent', borderRadius: 8, padding: '8px 4px', color: importTab === k ? '#38bdf8' : '#444', fontFamily: "'Barlow',sans-serif", fontWeight: 700, fontSize: 12, cursor: 'pointer', transition: 'all .15s' }}>
-                    {k === 'lista' ? '📋 Lista de presentes' : '⚽ Times sorteados'}
+              <div style={{ display: 'flex', background: '#111', border: '1px solid #1f1f1f', borderRadius: 10, padding: 3, gap: 3, marginBottom: 16, flexWrap: 'wrap' }}>
+                {([
+                  { k: 'lista',      icon: '📋', label: 'Lista' },
+                  { k: 'times',      icon: '⚽', label: 'Times' },
+                  { k: 'resultados', icon: '🏟️', label: 'Resultados' },
+                  { k: 'gols',       icon: '🥅', label: 'Gols' },
+                ] as const).map(t => (
+                  <button key={t.k} onClick={() => { setImportTab(t.k); setImportResult(null); }}
+                    style={{ flex: 1, minWidth: 60, background: importTab === t.k ? '#0d1f2e' : 'none', border: importTab === t.k ? '1px solid #1e3a5f' : '1px solid transparent', borderRadius: 8, padding: '7px 4px', color: importTab === t.k ? '#38bdf8' : '#444', fontFamily: "'Barlow',sans-serif", fontWeight: 700, fontSize: 11, cursor: 'pointer', transition: 'all .15s' }}>
+                    {t.icon} {t.label}
                   </button>
                 ))}
               </div>
@@ -4075,6 +4080,172 @@ const [loading, setLoading] = useState(true);
                   </div>
                 </>
               )}
+
+              {/* Aba: Resultados */}
+              {importTab === 'resultados' && (
+                <>
+                  <div style={{ background: '#080808', border: '1px solid #1a1a1a', borderRadius: 8, padding: '10px 12px', marginBottom: 10 }}>
+                    <div style={{ fontSize: 10, color: '#f59e0b', fontWeight: 700, letterSpacing: 1, marginBottom: 6 }}>FORMATO</div>
+                    <div style={{ fontFamily: 'monospace', fontSize: 11, color: '#444', lineHeight: 1.8 }}>
+                      {numTimes === 5
+                        ? <><div>Jogo 1: Azulões 3 x 1 Diabos Vermelhos</div><div>Jogo 2: ...</div><div>Final: Canarinhos 2 x 2 Duendes Verdes</div></>
+                        : <><div>Rodada 1: Diabos 3 x 1 Azulões, Duendes 2 x 0 Canarinhos</div><div>Rodada 2: ...</div><div>Final: Canarinhos 2 x 1 Duendes Verdes</div></>
+                      }
+                    </div>
+                    <div style={{ fontSize: 10, color: '#333', marginTop: 6 }}>Aceita nome completo ou parcial: "Diabos", "Vermelho", "Azulões"</div>
+                  </div>
+                  <textarea className="inp"
+                    style={{ height: 180, resize: 'vertical', fontFamily: 'monospace', fontSize: 12, lineHeight: 1.7, marginBottom: 10 }}
+                    placeholder={numTimes === 5
+                      ? 'Jogo 1: Azulões 3 x 1 Diabos Vermelhos\nJogo 2: ...\nFinal: Canarinhos 2 x 2 Duendes Verdes'
+                      : 'Rodada 1: Diabos Vermelhos 3 x 1 Azulões, Duendes Verdes 2 x 0 Canarinhos\nRodada 2: ...\nFinal: Canarinhos 2 x 1 Duendes Verdes'}
+                    value={importText}
+                    onChange={e => setImportText(e.target.value)}
+                  />
+                  {importResult && (
+                    <div style={{ background: importResult.startsWith('❌') ? '#1a0808' : '#0a1f0a', border: `1px solid ${importResult.startsWith('❌') ? '#ef444433' : '#22c55e33'}`, borderRadius: 8, padding: '10px 12px', marginBottom: 10, fontSize: 11, color: importResult.startsWith('❌') ? '#ef4444' : '#4ade80', whiteSpace: 'pre-wrap', lineHeight: 1.6 }}>
+                      {importResult}
+                    </div>
+                  )}
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <button className="btn2" style={{ flex: 1, padding: 10 }} onClick={() => setShowImport(false)}>Cancelar</button>
+                    <button className="btn"
+                      style={{ flex: 2, background: 'linear-gradient(135deg,#7c2d12,#f59e0b)', opacity: !importText.trim() ? 0.5 : 1 }}
+                      disabled={!importText.trim()}
+                      onClick={() => {
+                        try {
+                          const aliasToKey: Record<string, string> = {};
+                          Object.entries(TEAMS_CFG).forEach(([k, c]) => {
+                            const label = normalizeName((c as any).label);
+                            aliasToKey[k] = k; aliasToKey[label] = k;
+                            label.split(' ').forEach(w => { if (w.length > 3) aliasToKey[w] = k; });
+                          });
+                          const findTeamKey = (raw: string) => {
+                            const n = normalizeName(raw.trim());
+                            if (aliasToKey[n]) return aliasToKey[n];
+                            for (const [alias, key] of Object.entries(aliasToKey)) {
+                              if (n.includes(alias) || alias.includes(n)) return key;
+                            }
+                            return null;
+                          };
+                          const parseScore = (raw: string) => { const m = raw.match(/(\d+)\s*[xX×]\s*(\d+)/); return m ? [m[1], m[2]] : null; };
+                          const lines = importText.split('\n').map(l => l.trim()).filter(Boolean);
+                          let newRounds = rounds.map(r => ({ ...r, pairs: r.pairs.map(p => ({ ...p })) }));
+                          let newFinale = { ...finale };
+                          let log: string[] = [];
+                          for (const line of lines) {
+                            const isFinal = /final/i.test(line) && !/rodada|jogo/i.test(line);
+                            if (isFinal) {
+                              const afterColon = line.replace(/.*final\s*[:：]?\s*/i, '');
+                              const sc = parseScore(afterColon);
+                              if (sc) {
+                                const parts = afterColon.split(/\d+\s*[xX×]\s*\d+/);
+                                const tA = findTeamKey(parts[0] || ''); const tB = findTeamKey(parts[1] || '');
+                                if (tA) { newFinale.tA = tA; newFinale.sA = sc[0]; }
+                                if (tB) { newFinale.tB = tB; newFinale.sB = sc[1]; }
+                                newFinale.penaltyWinner = '';
+                                log.push(`✅ Final: ${(TEAMS_CFG[newFinale.tA] as any)?.label} ${newFinale.sA} × ${newFinale.sB} ${(TEAMS_CFG[newFinale.tB] as any)?.label}`);
+                              }
+                              continue;
+                            }
+                            const rm = line.match(/^(?:rodada|jogo)\s*(\d+)\s*[:：]\s*/i);
+                            if (!rm) continue;
+                            const num = parseInt(rm[1]);
+                            const rest = line.slice(rm[0].length);
+                            if (numTimes === 5) {
+                              const ri = newRounds.findIndex(r => r.id === num);
+                              if (ri === -1) continue;
+                              const sc = parseScore(rest); if (!sc) continue;
+                              const parts = rest.split(/\d+\s*[xX×]\s*\d+/);
+                              const tA = findTeamKey(parts[0] || ''); const tB = findTeamKey(parts[1] || '');
+                              newRounds[ri].pairs[0] = { ...newRounds[ri].pairs[0], ...(tA ? { tA } : {}), ...(tB ? { tB } : {}), sA: sc[0], sB: sc[1] };
+                              log.push(`✅ Jogo ${num}: ${sc[0]} × ${sc[1]}`);
+                            } else {
+                              const ri = newRounds.findIndex(r => r.id === num);
+                              if (ri === -1) continue;
+                              const jogos = rest.split(/,(?=[^,]*\d+\s*[xX×]\s*\d+)/);
+                              jogos.forEach((jogo, ji) => {
+                                if (ji >= newRounds[ri].pairs.length) return;
+                                const sc = parseScore(jogo); if (!sc) return;
+                                const parts = jogo.split(/\d+\s*[xX×]\s*\d+/);
+                                const tA = findTeamKey(parts[0] || ''); const tB = findTeamKey(parts[1] || '');
+                                newRounds[ri].pairs[ji] = { ...newRounds[ri].pairs[ji], ...(tA ? { tA } : {}), ...(tB ? { tB } : {}), sA: sc[0], sB: sc[1] };
+                              });
+                              log.push(`✅ Rodada ${num}: ${jogos.length} jogo(s)`);
+                            }
+                          }
+                          if (!log.length) throw new Error('Nenhum resultado reconhecido. Verifique o formato.');
+                          updateRounds(newRounds); updateFinale(newFinale);
+                          setImportResult('🎉 Resultados importados!\n\n' + log.join('\n'));
+                        } catch (err: any) { setImportResult('❌ Erro: ' + (err.message || 'Verifique o formato')); }
+                      }}>
+                      ⚡ IMPORTAR RESULTADOS
+                    </button>
+                  </div>
+                </>
+              )}
+
+              {/* Aba: Gols */}
+              {importTab === 'gols' && (
+                <>
+                  <div style={{ background: '#080808', border: '1px solid #1a1a1a', borderRadius: 8, padding: '10px 12px', marginBottom: 10 }}>
+                    <div style={{ fontSize: 10, color: '#4ade80', fontWeight: 700, letterSpacing: 1, marginBottom: 4 }}>FORMATO</div>
+                    <div style={{ fontFamily: 'monospace', fontSize: 11, color: '#444', lineHeight: 1.8 }}>
+                      <div>Uchôa 4, Marcelinho 2, Dener 1</div>
+                      <div style={{ color: '#333', fontSize: 10, marginTop: 2 }}>ou um por linha: Uchôa 4 / Marcelinho 2</div>
+                    </div>
+                  </div>
+                  <textarea className="inp"
+                    style={{ height: 150, resize: 'vertical', fontFamily: 'monospace', fontSize: 12, lineHeight: 1.7, marginBottom: 10 }}
+                    placeholder="Uchôa 4, Marcelinho 2, Dener 1, Rafinha 1..."
+                    value={importText}
+                    onChange={e => setImportText(e.target.value)}
+                  />
+                  {importResult && (
+                    <div style={{ background: importResult.startsWith('❌') ? '#1a0808' : '#0a1f0a', border: `1px solid ${importResult.startsWith('❌') ? '#ef444433' : '#22c55e33'}`, borderRadius: 8, padding: '10px 12px', marginBottom: 10, fontSize: 11, color: importResult.startsWith('❌') ? '#ef4444' : '#4ade80', whiteSpace: 'pre-wrap', lineHeight: 1.6 }}>
+                      {importResult}
+                    </div>
+                  )}
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <button className="btn2" style={{ flex: 1, padding: 10 }} onClick={() => setShowImport(false)}>Cancelar</button>
+                    <button className="btn"
+                      style={{ flex: 2, background: 'linear-gradient(135deg,#064e3b,#4ade80)', color: '#000', opacity: !importText.trim() ? 0.5 : 1 }}
+                      disabled={!importText.trim()}
+                      onClick={() => {
+                        try {
+                          const entries = importText.split(/[,\n]/).map(e => e.trim()).filter(Boolean);
+                          const newScorers: Record<number, number> = {};
+                          const notFound: string[] = [];
+                          entries.forEach(entry => {
+                            const tokens = entry.trim().split(/\s+/);
+                            const goals = parseInt(tokens[tokens.length - 1]);
+                            if (isNaN(goals)) return;
+                            const name = tokens.slice(0, -1).join(' ');
+                            const found = players.find(p =>
+                              normalizeName(p.name) === normalizeName(name) ||
+                              normalizeName(p.name).includes(normalizeName(name)) ||
+                              normalizeName(name).includes(normalizeName(p.name))
+                            );
+                            if (found) newScorers[found.id] = goals;
+                            else notFound.push(name);
+                          });
+                          if (!Object.keys(newScorers).length) throw new Error('Nenhum jogador reconhecido. Verifique os nomes.');
+                          updateScorers(newScorers);
+                          const matched = Object.entries(newScorers).map(([id, g]) => {
+                            const p = players.find(pl => pl.id === Number(id));
+                            return `  ⚽ ${p?.name}: ${g} gol${g > 1 ? 's' : ''}`;
+                          });
+                          let msg = `✅ ${matched.length} artilheiro(s) registrado(s):\n${matched.join('\n')}`;
+                          if (notFound.length) msg += `\n\n⚠️ Não encontrados: ${notFound.join(', ')}`;
+                          setImportResult(msg);
+                        } catch (err: any) { setImportResult('❌ Erro: ' + (err.message || 'Verifique o formato')); }
+                      }}>
+                      ⚡ IMPORTAR GOLS
+                    </button>
+                  </div>
+                </>
+              )}
+
             </div>
           </div>
         )}

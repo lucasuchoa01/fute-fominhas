@@ -1934,6 +1934,36 @@ const [loading, setLoading] = useState(true);
     alert('Partida salva e tabela atualizada.');
   };
 
+  const undoAppliedMatch = () => {
+    if (!appliedMatch) return;
+    if (!confirm('Desfazer a última partida salva?\n\nOs gols, presenças, títulos e vices dela são retirados dos totais dos jogadores. Os placares na tela não são apagados — você pode corrigir e salvar de novo.')) return;
+
+    const updated = players.map((player) => {
+      let next = { ...player };
+      next.goals -= appliedMatch.goals?.[player.id] || 0;
+      next.pres -= appliedMatch.presentIds?.includes(player.id) ? 1 : 0;
+      next.champ -= appliedMatch.champIds?.includes(player.id) ? 1 : 0;
+      next.vice -= appliedMatch.viceIds?.includes(player.id) ? 1 : 0;
+      next.goals = Math.max(0, next.goals);
+      next.pres = Math.max(0, next.pres);
+      next.champ = Math.max(0, next.champ);
+      next.vice = Math.max(0, next.vice);
+      return next;
+    });
+    updatePlayers(updated);
+    setAppliedMatch(null);
+    save('fm_appliedMatch', null);
+
+    // Remove a entrada correspondente do histórico (mesma data da lista atual)
+    const newHistory = matchHistory.filter(h => h.date !== lista.date);
+    if (newHistory.length !== matchHistory.length) {
+      setMatchHistory(newHistory);
+      save('fm_matchHistory', newHistory);
+    }
+
+    alert('Partida desfeita. Os placares continuam na tela — corrija e salve novamente quando quiser.');
+  };
+
   const resetSemana = async () => {
     const hoje = new Date().getDay();
     if (hoje !== 4 && hoje !== 5 && hoje !== 6 && hoje !== 0 && hoje !== 3) {
@@ -4497,6 +4527,12 @@ const [loading, setLoading] = useState(true);
                 Salvo em {new Date(appliedMatch.savedAt).toLocaleString('pt-BR')}
               </div>
             )}
+            {appliedMatch && (
+              <button onClick={undoAppliedMatch}
+                style={{ width: '100%', background: '#141414', border: '1px solid #3a2a00', borderRadius: 10, color: '#f59e0b', padding: '9px', fontFamily: "'Barlow',sans-serif", fontWeight: 700, fontSize: 12, cursor: 'pointer', marginBottom: 6 }}>
+                ↩️ DESFAZER PARTIDA SALVA
+              </button>
+            )}
             <button onClick={resetSemana}
               style={{ width: '100%', background: 'none', border: '1px solid #3a1a1a', borderRadius: 10, color: '#ef4444', padding: '10px', fontFamily: "'Barlow',sans-serif", fontWeight: 700, fontSize: 13, cursor: 'pointer', letterSpacing: 0.5 }}>
               🔄 NOVA SEMANA (zerar lista, sorteio e placares)
@@ -4998,30 +5034,6 @@ const [loading, setLoading] = useState(true);
                     </button>
                   </div>
                 </div>
-
-                {/* Correção: incluir a última partida salva na 2026.2 */}
-                {appliedMatch && (
-                  <button
-                    onClick={() => {
-                      if (!confirm('Mover a última partida salva desta semana para a Temporada 2026.2?\n\nOs pontos, gols e presenças dela deixam de contar na 2026.1 e passam a contar na 2026.2. Nenhum dado do jogador é apagado.')) return;
-                      const newCheckpointPlayers = { ...temporadaCheckpoint.players };
-                      players.forEach((p) => {
-                        const base = newCheckpointPlayers[p.id] || { champ: 0, vice: 0, goals: 0, pres: 0 };
-                        newCheckpointPlayers[p.id] = {
-                          champ: Math.max(0, base.champ - (appliedMatch.champIds?.includes(p.id) ? 1 : 0)),
-                          vice: Math.max(0, base.vice - (appliedMatch.viceIds?.includes(p.id) ? 1 : 0)),
-                          goals: Math.max(0, base.goals - (appliedMatch.goals?.[p.id] || 0)),
-                          pres: Math.max(0, base.pres - (appliedMatch.presentIds?.includes(p.id) ? 1 : 0)),
-                        };
-                      });
-                      const newStartedAt = lista.date && lista.date < temporadaCheckpoint.startedAt ? lista.date : temporadaCheckpoint.startedAt;
-                      updateTemporadaCheckpoint({ startedAt: newStartedAt, players: newCheckpointPlayers });
-                    }}
-                    style={{ width: '100%', background: '#0d1f0d', border: '1px solid #2d5a2d', borderRadius: 10, color: '#4ade80', padding: '9px', fontFamily: "'Barlow',sans-serif", fontWeight: 700, fontSize: 12, cursor: 'pointer', marginBottom: 8 }}
-                  >
-                    🔧 Incluir a última partida na Temporada 2026.2
-                  </button>
-                )}
 
                 <button
                   onClick={() => {

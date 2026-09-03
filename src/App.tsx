@@ -1531,7 +1531,8 @@ const [loading, setLoading] = useState(true);
   const [freeAgents, setFreeAgents] = useState([]);
   const [pendingPicker, setPendingPicker] = useState(null);
   const [pikinhaOverride, setPikinhaOverride] = useState<number[]>([]); // IDs selecionados manualmente
-  const [temporadaCheckpoint, setTemporadaCheckpoint] = useState<{ startedAt: string; players: Record<number, { champ: number; vice: number; goals: number; pres: number }> } | null>(null);
+  const [temporadaStartDate, setTemporadaStartDate] = useState<string | null>(null); // 'AAAA-MM-DD' — data que separa 2026.1 de 2026.2
+  const [matchStatLedger, setMatchStatLedger] = useState<Array<{ date: string; goals: Record<number, number>; presentIds: number[]; champIds: number[]; viceIds: number[] }>>([]);
   const [tabelaSubTab, setTabelaSubTab] = useState<'temporada1' | 'temporada2' | 'completo'>('temporada1');
   const [showImport, setShowImport] = useState(false);
   const [importText, setImportText] = useState('');
@@ -1597,10 +1598,24 @@ const [loading, setLoading] = useState(true);
         if (nt) setNumTimes(nt);
         const po = load('fm_pikinhaOverride');
         if (po) setPikinhaOverride(po);
-        const tc = load('fm_temporadaCheckpoint');
-        if (tc) setTemporadaCheckpoint(tc);
+        const tsd = load('fm_temporadaStartDate');
+        if (tsd) setTemporadaStartDate(tsd);
         const tst = load('fm_tabelaSubTab');
         if (tst) setTabelaSubTab(tst);
+        // Ledger de partidas (para filtrar por data). Se ainda não existe e há uma
+        // partida ativa na tela (ainda não passou por "Nova Semana"), inicializa o
+        // ledger com ela — assim partidas já salvas antes desta atualização não se perdem.
+        const ledgerRaw = data['fm_matchStatLedger'];
+        if (ledgerRaw && ledgerRaw !== 'null') {
+          try {
+            const parsedLedger = JSON.parse(ledgerRaw);
+            if (Array.isArray(parsedLedger)) setMatchStatLedger(parsedLedger);
+          } catch (e) {}
+        } else if (cm && li?.date) {
+          const bootstrap = [{ date: li.date, goals: cm.goals || {}, presentIds: cm.presentIds || [], champIds: cm.champIds || [], viceIds: cm.viceIds || [] }];
+          setMatchStatLedger(bootstrap);
+          save('fm_matchStatLedger', bootstrap);
+        }
         const mh = load('fm_matchHistory');
         if (mh) {
           // Dedup by date, keep first occurrence (most recent save)
@@ -1677,39 +1692,60 @@ const [loading, setLoading] = useState(true);
     setPikinhaOverride(v);
     save('fm_pikinhaOverride', v);
   };
-  const updateTemporadaCheckpoint = (v: typeof temporadaCheckpoint) => {
-    setTemporadaCheckpoint(v);
-    save('fm_temporadaCheckpoint', v);
+  const updateTemporadaStartDate = (v: string | null) => {
+    setTemporadaStartDate(v);
+    save('fm_temporadaStartDate', v);
+  };
+  const updateMatchStatLedger = (v: typeof matchStatLedger) => {
+    setMatchStatLedger(v);
+    save('fm_matchStatLedger', v);
+  };
+  // Cria ou substitui a entrada do ledger para uma data (usado ao salvar/desfazer partida)
+  const upsertLedgerEntry = (date: string, delta: { goals: Record<number, number>; presentIds: number[]; champIds: number[]; viceIds: number[] } | null) => {
+    const rest = matchStatLedger.filter(e => e.date !== date);
+    const next = delta ? [...rest, { date, ...delta }] : rest;
+    updateMatchStatLedger(next);
   };
   const updateTabelaSubTab = (v: 'temporada1' | 'temporada2' | 'completo') => {
     setTabelaSubTab(v);
     save('fm_tabelaSubTab', v);
   };
 
-  // Retorna as estatísticas (champ/vice/goals/pres) de um jogador para a aba de tabela selecionada
+  // Soma as contribuições do ledger (gols/presenças/títulos/vices) de um jogador num conjunto de partidas
+  const sumLedgerForPlayer = (playerId: number, entries: typeof matchStatLedger) => {
+    let champ = 0, vice = 0, goals = 0, pres = 0;
+    entries.forEach(e => {
+      goals += e.goals?.[playerId] || 0;
+      if (e.presentIds?.includes(playerId)) pres += 1;
+      if (e.champIds?.includes(playerId)) champ += 1;
+      if (e.viceIds?.includes(playerId)) vice += 1;
+    });
+    return { champ, vice, goals, pres };
+  };
+
+  // Retorna as estatísticas (champ/vice/goals/pres) de um jogador para a aba de tabela selecionada.
+  // Temporada 2 = soma das partidas do ledger com data >= temporadaStartDate.
+  // Temporada 1 = tudo o que sobra (total completo menos a Temporada 2) — assim mudar a
+  // data de início reclassifica as partidas automaticamente, sem precisar de "foto".
   const getStatsForTab = (p: any, tab: 'temporada1' | 'temporada2' | 'completo') => {
-    if (tab === 'completo') {
-      return { champ: p.champ, vice: p.vice, goals: p.goals, pres: p.pres };
+    const completo = { champ: p.champ, vice: p.vice, goals: p.goals, pres: p.pres };
+    if (tab === 'completo') return completo;
+    if (!temporadaStartDate) {
+      return tab === 'temporada1' ? completo : { champ: 0, vice: 0, goals: 0, pres: 0 };
     }
-    if (!temporadaCheckpoint) {
-      // Temporada 2 ainda não começou: tudo é "Temporada 1" (igual ao completo até aqui)
-      return tab === 'temporada1'
-        ? { champ: p.champ, vice: p.vice, goals: p.goals, pres: p.pres }
-        : { champ: 0, vice: 0, goals: 0, pres: 0 };
-    }
-    const cp = temporadaCheckpoint.players[p.id] || { champ: 0, vice: 0, goals: 0, pres: 0 };
-    if (tab === 'temporada1') return cp; // foto congelada no momento do fechamento
-    // temporada2 = delta entre o valor atual e o checkpoint
+    const season2Entries = matchStatLedger.filter(e => e.date >= temporadaStartDate);
+    const s2 = sumLedgerForPlayer(p.id, season2Entries);
+    if (tab === 'temporada2') return s2;
     return {
-      champ: Math.max(0, p.champ - cp.champ),
-      vice: Math.max(0, p.vice - cp.vice),
-      goals: Math.max(0, p.goals - cp.goals),
-      pres: Math.max(0, p.pres - cp.pres),
+      champ: Math.max(0, completo.champ - s2.champ),
+      vice: Math.max(0, completo.vice - s2.vice),
+      goals: Math.max(0, completo.goals - s2.goals),
+      pres: Math.max(0, completo.pres - s2.pres),
     };
   };
 
   // Chave da temporada "ao vivo" no momento — usada nas badges do Início
-  const currentSeasonKey: 'temporada1' | 'temporada2' = temporadaCheckpoint ? 'temporada2' : 'temporada1';
+  const currentSeasonKey: 'temporada1' | 'temporada2' = temporadaStartDate ? 'temporada2' : 'temporada1';
 
   const openAddPlayerModal = ({
     name = '',
@@ -1900,6 +1936,8 @@ const [loading, setLoading] = useState(true);
     updatePlayers(updated);
     setAppliedMatch(snapshot);
     save('fm_appliedMatch', snapshot);
+    // Registra/atualiza a entrada desta data no ledger (usado para filtrar por Temporada)
+    upsertLedgerEntry(lista.date, { goals: normalizedGoals, presentIds, champIds, viceIds });
 
     // Save to history
     const topScorer = (() => {
@@ -1953,6 +1991,8 @@ const [loading, setLoading] = useState(true);
     updatePlayers(updated);
     setAppliedMatch(null);
     save('fm_appliedMatch', null);
+    // Remove a entrada desta data do ledger também
+    upsertLedgerEntry(lista.date, null);
 
     // Remove a entrada correspondente do histórico (mesma data da lista atual)
     const newHistory = matchHistory.filter(h => h.date !== lista.date);
@@ -4743,7 +4783,7 @@ const [loading, setLoading] = useState(true);
         {/* Sub-abas de temporada */}
         <div style={{ display: 'flex', background: '#111', border: '1px solid #1f1f1f', borderRadius: 10, padding: 3, gap: 3, marginBottom: 12 }}>
           {(['temporada1', 'temporada2', 'completo'] as const).map(k => {
-            const disabled = k === 'temporada2' && !temporadaCheckpoint;
+            const disabled = k === 'temporada2' && !temporadaStartDate;
             const active = tabelaSubTab === k;
             const label = k === 'temporada1' ? '2026.1' : k === 'temporada2' ? '2026.2' : 'Completo';
             const color = k === 'completo' ? '#38bdf8' : '#f59e0b';
@@ -4765,9 +4805,9 @@ const [loading, setLoading] = useState(true);
             );
           })}
         </div>
-        {tabelaSubTab === 'temporada2' && temporadaCheckpoint && (
+        {tabelaSubTab === 'temporada2' && temporadaStartDate && (
           <div style={{ fontSize: 10, color: '#5a4a00', textAlign: 'center', marginBottom: 10 }}>
-            Iniciada em {(() => { const [y,m,d] = temporadaCheckpoint.startedAt.split('-'); return `${d}/${m}/${y}`; })()}
+            Partidas a partir de {(() => { const [y,m,d] = temporadaStartDate.split('-'); return `${d}/${m}/${y}`; })()}
           </div>
         )}
 
@@ -4986,24 +5026,27 @@ const [loading, setLoading] = useState(true);
         {isAdmin && (
           <div className="card" style={{ marginBottom: 12 }}>
             <div style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 14, color: '#f59e0b', letterSpacing: 1, marginBottom: 4 }}>TEMPORADA</div>
-            {!temporadaCheckpoint ? (
+            {!temporadaStartDate ? (
               <>
                 <div style={{ fontSize: 11, color: '#555', marginBottom: 10 }}>
-                  Estamos na <strong style={{ color: '#f59e0b' }}>Temporada 2026.1</strong>. Ao iniciar a 2026.2, a tabela atual fica congelada como "2026.1" e uma nova contagem começa do zero — sem apagar nada do histórico dos jogadores.
+                  Estamos na <strong style={{ color: '#f59e0b' }}>Temporada 2026.1</strong>. Escolha a data a partir da qual as partidas passam a contar na <strong style={{ color: '#f59e0b' }}>Temporada 2026.2</strong> — as anteriores continuam na 2026.1. Nada do histórico dos jogadores é apagado.
                 </div>
+                <label className="lbl">DATA DE INÍCIO DA 2026.2</label>
+                <input
+                  type="date"
+                  id="temporada-start-input"
+                  className="inp"
+                  defaultValue={new Date().toISOString().split('T')[0]}
+                />
                 <button
                   onClick={() => {
-                    if (!confirm('Iniciar Temporada 2026.2?\n\nA Temporada 2026.1 será congelada com os números de hoje.\nOs totais dos jogadores continuam intactos — nada é apagado.')) return;
-                    const checkpoint = {
-                      startedAt: new Date().toISOString().split('T')[0],
-                      players: Object.fromEntries(
-                        players.map(p => [p.id, { champ: p.champ, vice: p.vice, goals: p.goals, pres: p.pres }])
-                      ),
-                    };
-                    updateTemporadaCheckpoint(checkpoint);
+                    const inputEl = document.getElementById('temporada-start-input') as HTMLInputElement | null;
+                    const chosenDate = inputEl?.value || new Date().toISOString().split('T')[0];
+                    if (!confirm(`Iniciar Temporada 2026.2 a partir de ${(() => { const [y,m,d]=chosenDate.split('-'); return `${d}/${m}/${y}`; })()}?\n\nPartidas salvas a partir dessa data contam na 2026.2. As anteriores ficam na 2026.1. Nada é apagado.`)) return;
+                    updateTemporadaStartDate(chosenDate);
                     updateTabelaSubTab('temporada2');
                   }}
-                  style={{ width: '100%', background: 'linear-gradient(135deg,#7c2d12,#f59e0b)', border: 'none', borderRadius: 10, padding: '11px', color: '#000', fontFamily: "'Barlow',sans-serif", fontWeight: 700, fontSize: 13, cursor: 'pointer', letterSpacing: 0.5 }}
+                  style={{ width: '100%', background: 'linear-gradient(135deg,#7c2d12,#f59e0b)', border: 'none', borderRadius: 10, padding: '11px', color: '#000', fontFamily: "'Barlow',sans-serif", fontWeight: 700, fontSize: 13, cursor: 'pointer', letterSpacing: 0.5, marginTop: 4 }}
                 >
                   🏁 INICIAR TEMPORADA 2026.2
                 </button>
@@ -5011,34 +5054,26 @@ const [loading, setLoading] = useState(true);
             ) : (
               <>
                 <div style={{ background: '#1a1200', border: '1px solid #f59e0b33', borderRadius: 8, padding: '10px 12px', marginBottom: 10 }}>
-                  <div style={{ fontSize: 12, color: '#f59e0b', fontWeight: 700 }}>
+                  <div style={{ fontSize: 12, color: '#f59e0b', fontWeight: 700, marginBottom: 6 }}>
                     ✅ Temporada 2026.2 ativa
                   </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
-                    <span style={{ fontSize: 11, color: '#5a4a00' }}>
-                      Iniciada em {(() => { const [y, m, d] = temporadaCheckpoint.startedAt.split('-'); return `${d}/${m}/${y}`; })()} · Temporada 2026.1 congelada
-                    </span>
-                    <button
-                      onClick={() => {
-                        const novaData = window.prompt('Corrigir a data de início da Temporada 2026.2 (AAAA-MM-DD):', temporadaCheckpoint.startedAt);
-                        if (novaData && /^\d{4}-\d{2}-\d{2}$/.test(novaData)) {
-                          updateTemporadaCheckpoint({ ...temporadaCheckpoint, startedAt: novaData });
-                        } else if (novaData) {
-                          alert('Data inválida. Use o formato AAAA-MM-DD.');
-                        }
-                      }}
-                      style={{ background: 'none', border: 'none', color: '#8a6a00', cursor: 'pointer', fontSize: 11, padding: 0, flexShrink: 0 }}
-                      title="Editar data"
-                    >
-                      ✏️
-                    </button>
+                  <label className="lbl" style={{ marginBottom: 4 }}>PARTIDAS A PARTIR DE</label>
+                  <input
+                    type="date"
+                    className="inp"
+                    style={{ marginBottom: 0 }}
+                    value={temporadaStartDate}
+                    onChange={(e) => e.target.value && updateTemporadaStartDate(e.target.value)}
+                  />
+                  <div style={{ fontSize: 10, color: '#5a4a00', marginTop: 6 }}>
+                    Mudar a data reclassifica as partidas automaticamente entre 2026.1 e 2026.2.
                   </div>
                 </div>
 
                 <button
                   onClick={() => {
-                    if (!confirm('Desfazer o início da Temporada 2026.2?\n\nIsso volta tudo para a Temporada 2026.1 (nenhum dado do jogador é apagado).')) return;
-                    updateTemporadaCheckpoint(null);
+                    if (!confirm('Desfazer o início da Temporada 2026.2?\n\nTudo volta a contar como Temporada 2026.1 (nenhum dado do jogador é apagado).')) return;
+                    updateTemporadaStartDate(null);
                     updateTabelaSubTab('temporada1');
                   }}
                   style={{ width: '100%', background: 'none', border: '1px solid #3a1a1a', borderRadius: 10, color: '#ef4444', padding: '9px', fontFamily: "'Barlow',sans-serif", fontWeight: 700, fontSize: 12, cursor: 'pointer' }}

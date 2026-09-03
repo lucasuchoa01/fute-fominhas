@@ -4978,10 +4978,51 @@ const [loading, setLoading] = useState(true);
                   <div style={{ fontSize: 12, color: '#f59e0b', fontWeight: 700 }}>
                     ✅ Temporada 2026.2 ativa
                   </div>
-                  <div style={{ fontSize: 11, color: '#5a4a00', marginTop: 2 }}>
-                    Iniciada em {(() => { const [y, m, d] = temporadaCheckpoint.startedAt.split('-'); return `${d}/${m}/${y}`; })()} · Temporada 2026.1 congelada
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
+                    <span style={{ fontSize: 11, color: '#5a4a00' }}>
+                      Iniciada em {(() => { const [y, m, d] = temporadaCheckpoint.startedAt.split('-'); return `${d}/${m}/${y}`; })()} · Temporada 2026.1 congelada
+                    </span>
+                    <button
+                      onClick={() => {
+                        const novaData = window.prompt('Corrigir a data de início da Temporada 2026.2 (AAAA-MM-DD):', temporadaCheckpoint.startedAt);
+                        if (novaData && /^\d{4}-\d{2}-\d{2}$/.test(novaData)) {
+                          updateTemporadaCheckpoint({ ...temporadaCheckpoint, startedAt: novaData });
+                        } else if (novaData) {
+                          alert('Data inválida. Use o formato AAAA-MM-DD.');
+                        }
+                      }}
+                      style={{ background: 'none', border: 'none', color: '#8a6a00', cursor: 'pointer', fontSize: 11, padding: 0, flexShrink: 0 }}
+                      title="Editar data"
+                    >
+                      ✏️
+                    </button>
                   </div>
                 </div>
+
+                {/* Correção: incluir a última partida salva na 2026.2 */}
+                {appliedMatch && (
+                  <button
+                    onClick={() => {
+                      if (!confirm('Mover a última partida salva desta semana para a Temporada 2026.2?\n\nOs pontos, gols e presenças dela deixam de contar na 2026.1 e passam a contar na 2026.2. Nenhum dado do jogador é apagado.')) return;
+                      const newCheckpointPlayers = { ...temporadaCheckpoint.players };
+                      players.forEach((p) => {
+                        const base = newCheckpointPlayers[p.id] || { champ: 0, vice: 0, goals: 0, pres: 0 };
+                        newCheckpointPlayers[p.id] = {
+                          champ: Math.max(0, base.champ - (appliedMatch.champIds?.includes(p.id) ? 1 : 0)),
+                          vice: Math.max(0, base.vice - (appliedMatch.viceIds?.includes(p.id) ? 1 : 0)),
+                          goals: Math.max(0, base.goals - (appliedMatch.goals?.[p.id] || 0)),
+                          pres: Math.max(0, base.pres - (appliedMatch.presentIds?.includes(p.id) ? 1 : 0)),
+                        };
+                      });
+                      const newStartedAt = lista.date && lista.date < temporadaCheckpoint.startedAt ? lista.date : temporadaCheckpoint.startedAt;
+                      updateTemporadaCheckpoint({ startedAt: newStartedAt, players: newCheckpointPlayers });
+                    }}
+                    style={{ width: '100%', background: '#0d1f0d', border: '1px solid #2d5a2d', borderRadius: 10, color: '#4ade80', padding: '9px', fontFamily: "'Barlow',sans-serif", fontWeight: 700, fontSize: 12, cursor: 'pointer', marginBottom: 8 }}
+                  >
+                    🔧 Incluir a última partida na Temporada 2026.2
+                  </button>
+                )}
+
                 <button
                   onClick={() => {
                     if (!confirm('Desfazer o início da Temporada 2026.2?\n\nIsso volta tudo para a Temporada 2026.1 (nenhum dado do jogador é apagado).')) return;

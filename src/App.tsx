@@ -1531,6 +1531,8 @@ const [loading, setLoading] = useState(true);
   const [freeAgents, setFreeAgents] = useState([]);
   const [pendingPicker, setPendingPicker] = useState(null);
   const [pikinhaOverride, setPikinhaOverride] = useState<number[]>([]); // IDs selecionados manualmente
+  const [temporadaCheckpoint, setTemporadaCheckpoint] = useState<{ startedAt: string; players: Record<number, { champ: number; vice: number; goals: number; pres: number }> } | null>(null);
+  const [tabelaSubTab, setTabelaSubTab] = useState<'temporada1' | 'temporada2' | 'completo'>('temporada1');
   const [showImport, setShowImport] = useState(false);
   const [importText, setImportText] = useState('');
   const [importLoading, setImportLoading] = useState(false);
@@ -1595,6 +1597,10 @@ const [loading, setLoading] = useState(true);
         if (nt) setNumTimes(nt);
         const po = load('fm_pikinhaOverride');
         if (po) setPikinhaOverride(po);
+        const tc = load('fm_temporadaCheckpoint');
+        if (tc) setTemporadaCheckpoint(tc);
+        const tst = load('fm_tabelaSubTab');
+        if (tst) setTabelaSubTab(tst);
         const mh = load('fm_matchHistory');
         if (mh) {
           // Dedup by date, keep first occurrence (most recent save)
@@ -1671,6 +1677,39 @@ const [loading, setLoading] = useState(true);
     setPikinhaOverride(v);
     save('fm_pikinhaOverride', v);
   };
+  const updateTemporadaCheckpoint = (v: typeof temporadaCheckpoint) => {
+    setTemporadaCheckpoint(v);
+    save('fm_temporadaCheckpoint', v);
+  };
+  const updateTabelaSubTab = (v: 'temporada1' | 'temporada2' | 'completo') => {
+    setTabelaSubTab(v);
+    save('fm_tabelaSubTab', v);
+  };
+
+  // Retorna as estatísticas (champ/vice/goals/pres) de um jogador para a aba de tabela selecionada
+  const getStatsForTab = (p: any, tab: 'temporada1' | 'temporada2' | 'completo') => {
+    if (tab === 'completo') {
+      return { champ: p.champ, vice: p.vice, goals: p.goals, pres: p.pres };
+    }
+    if (!temporadaCheckpoint) {
+      // Temporada 2 ainda não começou: tudo é "Temporada 1" (igual ao completo até aqui)
+      return tab === 'temporada1'
+        ? { champ: p.champ, vice: p.vice, goals: p.goals, pres: p.pres }
+        : { champ: 0, vice: 0, goals: 0, pres: 0 };
+    }
+    const cp = temporadaCheckpoint.players[p.id] || { champ: 0, vice: 0, goals: 0, pres: 0 };
+    if (tab === 'temporada1') return cp; // foto congelada no momento do fechamento
+    // temporada2 = delta entre o valor atual e o checkpoint
+    return {
+      champ: Math.max(0, p.champ - cp.champ),
+      vice: Math.max(0, p.vice - cp.vice),
+      goals: Math.max(0, p.goals - cp.goals),
+      pres: Math.max(0, p.pres - cp.pres),
+    };
+  };
+
+  // Chave da temporada "ao vivo" no momento — usada nas badges do Início
+  const currentSeasonKey: 'temporada1' | 'temporada2' = temporadaCheckpoint ? 'temporada2' : 'temporada1';
 
   const openAddPlayerModal = ({
     name = '',
@@ -1716,29 +1755,30 @@ const [loading, setLoading] = useState(true);
   const liderTabela = (() => {
     const mensalistas = players.filter((p) => (p.tipo || 'mensalista') === 'mensalista');
     if (!mensalistas.length) return null;
-    const sorted = [...mensalistas].sort((a, b) => b.champ - a.champ || b.vice - a.vice || b.goals - a.goals || b.pres - a.pres);
-    return sorted[0];
+    const withStats = mensalistas.map(p => ({ p, s: getStatsForTab(p, currentSeasonKey) }));
+    const sorted = withStats.sort((a, b) => b.s.champ - a.s.champ || b.s.vice - a.s.vice || b.s.goals - a.s.goals || b.s.pres - a.s.pres);
+    return sorted[0] ? { ...sorted[0].p, ...sorted[0].s } : null;
   })();
 
   const bolaMurcha = (() => {
-    const maxPres = Math.max(...players.filter(p => (p.tipo || 'mensalista') === 'mensalista').map(p => p.pres), 1);
-    const elegiveis = players.filter((p) =>
-      (p.tipo || 'mensalista') === 'mensalista' &&
-      p.pres >= maxPres * 0.5
-    );
+    const mensalistasAll = players.filter(p => (p.tipo || 'mensalista') === 'mensalista');
+    const withStats = mensalistasAll.map(p => ({ p, s: getStatsForTab(p, currentSeasonKey) }));
+    const maxPres = Math.max(...withStats.map(w => w.s.pres), 1);
+    const elegiveis = withStats.filter(w => w.s.pres >= maxPres * 0.5);
     if (!elegiveis.length) return null;
     // Pior da tabela: menos títulos, menos vice, menos gols (mesmo critério da tabela invertido)
     const sorted = [...elegiveis].sort((a, b) =>
-      a.champ - b.champ || a.vice - b.vice || a.goals - b.goals || a.pres - b.pres
+      a.s.champ - b.s.champ || a.s.vice - b.s.vice || a.s.goals - b.s.goals || a.s.pres - b.s.pres
     );
-    return sorted[0];
+    return sorted[0] ? { ...sorted[0].p, ...sorted[0].s } : null;
   })();
 
   const bolaDeOuro = (() => {
     const mensalistas = players.filter(p => (p.tipo || 'mensalista') === 'mensalista');
     if (!mensalistas.length) return null;
-    const sorted = [...mensalistas].sort((a, b) => b.goals - a.goals);
-    return sorted[0]?.goals > 0 ? sorted[0] : null;
+    const withStats = mensalistas.map(p => ({ p, s: getStatsForTab(p, currentSeasonKey) }));
+    const sorted = withStats.sort((a, b) => b.s.goals - a.s.goals);
+    return sorted[0]?.s.goals > 0 ? { ...sorted[0].p, ...sorted[0].s } : null;
   })();
 
   const currentChampionTeam = (() => {
@@ -4581,16 +4621,22 @@ const [loading, setLoading] = useState(true);
 
   // ── TABELA ───────────────────────────────────────────────────────────────────
   const TabTabela = () => {
-    const sorted = [...players]
-      .filter((p) => (p.tipo || 'mensalista') === 'mensalista')
-      .sort(
-        (a, b) => b.champ - a.champ || b.vice - a.vice || b.goals - a.goals || b.pres - a.pres
-      );
+    const tabLabels: Record<string, string> = {
+      temporada1: 'TEMPORADA 2026.1',
+      temporada2: 'TEMPORADA 2026.2',
+      completo: 'TABELA COMPLETA',
+    };
+
+    const mensalistasBase = players.filter((p) => (p.tipo || 'mensalista') === 'mensalista');
+    const sorted = mensalistasBase
+      .map(p => ({ p, s: getStatsForTab(p, tabelaSubTab) }))
+      .sort((a, b) => b.s.champ - a.s.champ || b.s.vice - a.s.vice || b.s.goals - a.s.goals || b.s.pres - a.s.pres)
+      .map(({ p, s }) => ({ ...p, ...s }));
 
     const downloadImage = async () => {
       const scale = 2;
-      const W = 440, rowH = 44, headerH = 52, bannerH = 147, footerH = 32;
-      const totalH = bannerH + headerH + rowH * sorted.length + footerH;
+      const W = 440, rowH = 44, headerH = 52, bannerH = 147, footerH = 32, subtitleH = 26;
+      const totalH = bannerH + subtitleH + headerH + rowH * sorted.length + footerH;
       const canvas = document.createElement('canvas');
       canvas.width = W * scale; canvas.height = totalH * scale;
       const ctx = canvas.getContext('2d');
@@ -4608,15 +4654,19 @@ const [loading, setLoading] = useState(true);
           img.src = blobUrl;
         });
       } catch {}
-      const titleH = bannerH;
-      ctx.fillStyle = '#1a1a1a'; ctx.fillRect(0, bannerH, W, headerH);
+      // Subtítulo com a temporada
+      ctx.fillStyle = '#141414'; ctx.fillRect(0, bannerH, W, subtitleH);
+      ctx.font = 'bold 12px Arial'; ctx.fillStyle = tabelaSubTab === 'completo' ? '#38bdf8' : '#f59e0b'; ctx.textAlign = 'center';
+      ctx.fillText(tabLabels[tabelaSubTab], W / 2, bannerH + subtitleH / 2 + 4);
+      const headerY = bannerH + subtitleH;
+      ctx.fillStyle = '#1a1a1a'; ctx.fillRect(0, headerY, W, headerH);
       ctx.font = 'bold 10px Arial'; ctx.fillStyle = '#555';
       [{ l:'#', x:28, c:'center' },{ l:'NOME', x:80, c:'left' },{ l:'🏆', x:257, c:'center' },{ l:'🥈', x:307, c:'center' },{ l:'⚽', x:357, c:'center' },{ l:'✅', x:407, c:'center' }]
-        .forEach(col => { ctx.textAlign = col.c; ctx.fillText(col.l, col.x, bannerH + headerH/2 + 4); });
+        .forEach(col => { ctx.textAlign = col.c; ctx.fillText(col.l, col.x, headerY + headerH/2 + 4); });
       const rC = { A:'#f59e0b', B:'#f97316', C:'#3b82f6', D:'#6b7280', E:'#374151' };
       const pC = ['#f59e0b','#94a3b8','#cd7c4b'];
       sorted.forEach((p, i) => {
-        const y = bannerH + headerH + rowH * i;
+        const y = headerY + headerH + rowH * i;
         ctx.fillStyle = i % 2 === 0 ? '#111' : '#141414'; ctx.fillRect(0, y, W, rowH);
         ctx.fillStyle = '#1f1f1f'; ctx.fillRect(0, y+rowH-1, W, 1);
         const cy = y + rowH/2 + 5;
@@ -4632,12 +4682,13 @@ const [loading, setLoading] = useState(true);
           ctx.textAlign = 'center'; ctx.fillText(String(v), [257,307,357,407][si], cy);
         });
       });
-      const fy = bannerH + headerH + rowH * sorted.length;
+      const fy = headerY + headerH + rowH * sorted.length;
       ctx.fillStyle = '#111'; ctx.fillRect(0, fy, W, footerH);
       ctx.font = '10px Arial'; ctx.fillStyle = '#333'; ctx.textAlign = 'center';
       ctx.fillText('Gerado em ' + new Date().toLocaleDateString('pt-BR') + ' · Depois das Dez FS', W/2, fy+20);
       const link = document.createElement('a');
-      link.download = 'tabela-fominhas-' + new Date().toISOString().slice(0,10) + '.png';
+      const fileSuffix = tabelaSubTab === 'completo' ? 'completa' : tabelaSubTab === 'temporada1' ? '2026-1' : '2026-2';
+      link.download = 'tabela-fominhas-' + fileSuffix + '-' + new Date().toISOString().slice(0,10) + '.png';
       link.href = canvas.toDataURL('image/png'); link.click();
     };
 
@@ -4652,8 +4703,40 @@ const [loading, setLoading] = useState(true);
             style={{ width: '100%', maxHeight: 140, display: 'block', objectFit: 'cover', objectPosition: 'center' }}
           />
         </div>
+
+        {/* Sub-abas de temporada */}
+        <div style={{ display: 'flex', background: '#111', border: '1px solid #1f1f1f', borderRadius: 10, padding: 3, gap: 3, marginBottom: 12 }}>
+          {(['temporada1', 'temporada2', 'completo'] as const).map(k => {
+            const disabled = k === 'temporada2' && !temporadaCheckpoint;
+            const active = tabelaSubTab === k;
+            const label = k === 'temporada1' ? '2026.1' : k === 'temporada2' ? '2026.2' : 'Completo';
+            const color = k === 'completo' ? '#38bdf8' : '#f59e0b';
+            return (
+              <button key={k}
+                onClick={() => !disabled && updateTabelaSubTab(k)}
+                disabled={disabled}
+                style={{
+                  flex: 1, background: active ? (k === 'completo' ? '#0d1f2e' : '#1a1200') : 'none',
+                  border: active ? `1px solid ${color}66` : '1px solid transparent',
+                  borderRadius: 8, padding: '8px 4px',
+                  color: disabled ? '#2a2a2a' : active ? color : '#555',
+                  fontFamily: "'Barlow',sans-serif", fontWeight: 700, fontSize: 12,
+                  cursor: disabled ? 'not-allowed' : 'pointer', transition: 'all .15s',
+                }}
+              >
+                {label}
+              </button>
+            );
+          })}
+        </div>
+        {tabelaSubTab === 'temporada2' && temporadaCheckpoint && (
+          <div style={{ fontSize: 10, color: '#5a4a00', textAlign: 'center', marginBottom: 10 }}>
+            Iniciada em {(() => { const [y,m,d] = temporadaCheckpoint.startedAt.split('-'); return `${d}/${m}/${y}`; })()}
+          </div>
+        )}
+
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-          <div className="stitle" style={{ margin: 0 }}>TABELA GERAL</div>
+          <div className="stitle" style={{ margin: 0 }}>{tabLabels[tabelaSubTab]}</div>
           <button onClick={downloadImage} style={{ background: '#141414', border: '1px solid #2a2a2a', borderRadius: 8, padding: '7px 14px', color: '#4ade80', fontSize: 12, cursor: 'pointer', fontFamily: "'Barlow',sans-serif", fontWeight: 700 }}>
             📥 BAIXAR
           </button>
@@ -4689,6 +4772,13 @@ const [loading, setLoading] = useState(true);
               </tr>
             </thead>
             <tbody>
+              {sorted.length === 0 && (
+                <tr>
+                  <td colSpan={6} style={{ padding: '24px 8px', textAlign: 'center', fontSize: 13, color: '#333', fontStyle: 'italic' }}>
+                    {tabelaSubTab === 'temporada2' ? 'A Temporada 2026.2 ainda não tem jogos.' : 'Nenhum jogador ainda.'}
+                  </td>
+                </tr>
+              )}
               {sorted.map((p, i) => (
                 <tr key={p.id} style={{ borderBottom: '1px solid #141414' }}>
                   <td
@@ -4855,6 +4945,57 @@ const [loading, setLoading] = useState(true);
     return (
       <div>
         <div className="stitle">GESTÃO</div>
+
+        {/* Temporada */}
+        {isAdmin && (
+          <div className="card" style={{ marginBottom: 12 }}>
+            <div style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 14, color: '#f59e0b', letterSpacing: 1, marginBottom: 4 }}>TEMPORADA</div>
+            {!temporadaCheckpoint ? (
+              <>
+                <div style={{ fontSize: 11, color: '#555', marginBottom: 10 }}>
+                  Estamos na <strong style={{ color: '#f59e0b' }}>Temporada 2026.1</strong>. Ao iniciar a 2026.2, a tabela atual fica congelada como "2026.1" e uma nova contagem começa do zero — sem apagar nada do histórico dos jogadores.
+                </div>
+                <button
+                  onClick={() => {
+                    if (!confirm('Iniciar Temporada 2026.2?\n\nA Temporada 2026.1 será congelada com os números de hoje.\nOs totais dos jogadores continuam intactos — nada é apagado.')) return;
+                    const checkpoint = {
+                      startedAt: new Date().toISOString().split('T')[0],
+                      players: Object.fromEntries(
+                        players.map(p => [p.id, { champ: p.champ, vice: p.vice, goals: p.goals, pres: p.pres }])
+                      ),
+                    };
+                    updateTemporadaCheckpoint(checkpoint);
+                    updateTabelaSubTab('temporada2');
+                  }}
+                  style={{ width: '100%', background: 'linear-gradient(135deg,#7c2d12,#f59e0b)', border: 'none', borderRadius: 10, padding: '11px', color: '#000', fontFamily: "'Barlow',sans-serif", fontWeight: 700, fontSize: 13, cursor: 'pointer', letterSpacing: 0.5 }}
+                >
+                  🏁 INICIAR TEMPORADA 2026.2
+                </button>
+              </>
+            ) : (
+              <>
+                <div style={{ background: '#1a1200', border: '1px solid #f59e0b33', borderRadius: 8, padding: '10px 12px', marginBottom: 10 }}>
+                  <div style={{ fontSize: 12, color: '#f59e0b', fontWeight: 700 }}>
+                    ✅ Temporada 2026.2 ativa
+                  </div>
+                  <div style={{ fontSize: 11, color: '#5a4a00', marginTop: 2 }}>
+                    Iniciada em {(() => { const [y, m, d] = temporadaCheckpoint.startedAt.split('-'); return `${d}/${m}/${y}`; })()} · Temporada 2026.1 congelada
+                  </div>
+                </div>
+                <button
+                  onClick={() => {
+                    if (!confirm('Desfazer o início da Temporada 2026.2?\n\nIsso volta tudo para a Temporada 2026.1 (nenhum dado do jogador é apagado).')) return;
+                    updateTemporadaCheckpoint(null);
+                    updateTabelaSubTab('temporada1');
+                  }}
+                  style={{ width: '100%', background: 'none', border: '1px solid #3a1a1a', borderRadius: 10, color: '#ef4444', padding: '9px', fontFamily: "'Barlow',sans-serif", fontWeight: 700, fontSize: 12, cursor: 'pointer' }}
+                >
+                  ↩️ Desfazer início da Temporada 2026.2
+                </button>
+              </>
+            )}
+          </div>
+        )}
 
         {/* Número de times */}
         {isAdmin && (

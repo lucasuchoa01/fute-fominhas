@@ -1531,6 +1531,7 @@ const [loading, setLoading] = useState(true);
   const [freeAgents, setFreeAgents] = useState([]);
   const [pendingPicker, setPendingPicker] = useState(null);
   const [pikinhaOverride, setPikinhaOverride] = useState<number[]>([]); // IDs selecionados manualmente
+  const [pikinhaUseCard, setPikinhaUseCard] = useState(false); // true = força card gerado mesmo se tiver foto anexada
   const [temporadaStartDate, setTemporadaStartDate] = useState<string | null>(null); // 'AAAA-MM-DD' — data que separa 2026.1 de 2026.2
   const [matchStatLedger, setMatchStatLedger] = useState<Array<{ date: string; goals: Record<number, number>; presentIds: number[]; champIds: number[]; viceIds: number[] }>>([]);
   const [tabelaSubTab, setTabelaSubTab] = useState<'temporada1' | 'temporada2' | 'completo'>('temporada1');
@@ -2259,9 +2260,9 @@ const [loading, setLoading] = useState(true);
     }
 
     // Draw card helper
-    const drawCard = (p: any, cx: number, cy: number, cw: number, ch: number) => {
+    const drawCard = (p: any, cx: number, cy: number, cw: number, ch: number, forceCard = false) => {
       if (!p) return;
-      const img = cardImgs[p.id];
+      const img = forceCard ? null : cardImgs[p.id];
       if (img) {
         ctx.save(); ctx.beginPath(); ctx.roundRect(cx, cy, cw, ch, 8); ctx.clip();
         ctx.drawImage(img, cx, cy, cw, ch); ctx.restore();
@@ -2287,11 +2288,12 @@ const [loading, setLoading] = useState(true);
     items.forEach((item, i) => {
       const colX = PAD + i * COL_W;
       const cardX = colX + (COL_W - CARD_W) / 2;
+      const isPikinha = i === 0;
       if (item.tied) {
         const mw = (CARD_W - 4) / 2;
-        item.tied.forEach((tp: any, ti: number) => drawCard(tp, cardX + ti * (mw + 4), y, mw, CARD_H));
+        item.tied.forEach((tp: any, ti: number) => drawCard(tp, cardX + ti * (mw + 4), y, mw, CARD_H, isPikinha && pikinhaUseCard));
       } else {
-        drawCard(item.player, cardX, y, CARD_W, CARD_H);
+        drawCard(item.player, cardX, y, CARD_W, CARD_H, isPikinha && pikinhaUseCard);
       }
       const nameX = colX + COL_W / 2;
       ctx.textAlign = 'center';
@@ -2384,6 +2386,232 @@ const [loading, setLoading] = useState(true);
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.download = 'resumo-fominhas-' + new Date().toISOString().slice(0, 10) + '.png';
+      a.href = url; a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 5000);
+    }, 'image/png');
+  };
+
+  // Versão vertical (formato Stories) — foto do campeão em pé + Líder/Ouro/Murcha
+  // empilhados à esquerda e Pikinha da Noite em destaque à direita, tabela e final compactas.
+  const exportResumoVertical = async () => {
+    const W = 480, PAD = 20, scale = 2;
+    const standings = calcStandings(rounds);
+    const currentRoundLabel = lista?.rodada || String(matchHistory.length + 1);
+    const formatDateBR = (iso?: string) => {
+      if (!iso) return '';
+      const [y, m, d] = iso.split('-');
+      if (!y || !m || !d) return iso;
+      return `${d}/${m}/${y}`;
+    };
+    const loadImg = (url: string): Promise<HTMLImageElement | null> =>
+      fetch(url).then(r => r.blob()).then(blob => new Promise((res) => {
+        const img = new Image(); const u = URL.createObjectURL(blob);
+        img.onload = () => { URL.revokeObjectURL(u); res(img); };
+        img.onerror = () => { URL.revokeObjectURL(u); res(null); };
+        img.src = u;
+      })).catch(() => null);
+
+    const cardImgs: Record<string, HTMLImageElement | null> = {};
+    const champImg = champTeamPhoto ? await loadImg(champTeamPhoto) : null;
+    const spotlightPlayers: any[] = [
+      ...(currentTopScorer?.tied ? currentTopScorer.tied : (currentTopScorer ? [players.find(pl => normalizeName(pl.name) === normalizeName(currentTopScorer.name))] : [])),
+      liderTabela, bolaMurcha, bolaDeOuro,
+    ].filter(Boolean);
+    await Promise.all(spotlightPlayers.map(async (p: any) => {
+      if (p?.cardUrl) cardImgs[p.id] = await loadImg(p.cardUrl);
+    }));
+
+    // --- Layout ---
+    const HEADER_H = 62;
+    const CHAMP_H = champImg ? 420 : 0; // foto em pé, bem mais alta
+    const SECTION_GAP = 14;
+    const TWO_COL_H = 300;
+    const LEFT_W = Math.round((W - PAD * 2) * 0.40);
+    const COL_GAP = 12;
+    const RIGHT_W = (W - PAD * 2) - LEFT_W - COL_GAP;
+    const ROW_GAP = 8;
+    const ROW_H = Math.floor((TWO_COL_H - ROW_GAP * 2) / 3);
+    const TABLE_TITLE_H = 20, TABLE_HEADER_H = 24, TABLE_ROW_H = 27; // compacta
+    const TABLE_H = TABLE_TITLE_H + TABLE_HEADER_H + standings.length * TABLE_ROW_H + 6;
+    const FINAL_H = 78; // compacta
+    const totalH = HEADER_H + (champImg ? CHAMP_H + SECTION_GAP : 0) + TWO_COL_H + SECTION_GAP + TABLE_H + SECTION_GAP + FINAL_H + PAD;
+
+    const canvas = document.createElement('canvas');
+    canvas.width = W * scale; canvas.height = totalH * scale;
+    const ctx = canvas.getContext('2d')!;
+    ctx.scale(scale, scale);
+
+    ctx.fillStyle = '#0a0a0a'; ctx.fillRect(0, 0, W, totalH);
+    ctx.fillStyle = '#111'; ctx.fillRect(0, 0, W, HEADER_H);
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#4ade80'; ctx.font = 'bold 10px Arial'; ctx.fillText('FOMINHAS LEAGUE', W / 2, 16);
+    ctx.fillStyle = '#fff'; ctx.font = 'bold 16px Arial'; ctx.fillText('RESUMO DA RODADA', W / 2, 35);
+    ctx.fillStyle = '#888'; ctx.font = '10px Arial';
+    ctx.fillText(`${formatDateBR(lista?.date)} · Rodada ${currentRoundLabel}`, W / 2, 52);
+
+    let y = HEADER_H + 6;
+
+    // Foto do campeão — em pé, ocupando bastante espaço vertical
+    if (champImg && currentChampionTeam) {
+      const cfg = TEAMS_CFG[currentChampionTeam];
+      ctx.save(); ctx.beginPath(); ctx.roundRect(PAD, y, W - PAD * 2, CHAMP_H, 10); ctx.clip();
+      // "object-fit: cover" manual — centraliza e corta o excesso
+      const iw = champImg.width, ih = champImg.height;
+      const boxW = W - PAD * 2, boxH = CHAMP_H;
+      const scaleImg = Math.max(boxW / iw, boxH / ih);
+      const dw = iw * scaleImg, dh = ih * scaleImg;
+      const dx = PAD + (boxW - dw) / 2, dy = y + (boxH - dh) * 0.25; // foco um pouco acima do centro (rostos)
+      ctx.drawImage(champImg, dx, dy, dw, dh);
+      ctx.restore();
+      const grad = ctx.createLinearGradient(0, y + CHAMP_H * 0.55, 0, y + CHAMP_H);
+      grad.addColorStop(0, 'rgba(0,0,0,0)'); grad.addColorStop(1, 'rgba(0,0,0,0.92)');
+      ctx.fillStyle = grad; ctx.fillRect(PAD, y, W - PAD * 2, CHAMP_H);
+      ctx.textAlign = 'left'; ctx.fillStyle = cfg.color; ctx.font = 'bold 24px Arial';
+      ctx.fillText('🏆 ' + cfg.label.toUpperCase(), PAD + 14, y + CHAMP_H - 30);
+      ctx.fillStyle = '#bbb'; ctx.font = '11px Arial';
+      ctx.fillText('CAMPEÃO DA SEMANA', PAD + 14, y + CHAMP_H - 12);
+      y += CHAMP_H + SECTION_GAP;
+    }
+
+    // Draw card helper (mesmo do exportResumo)
+    const drawCard = (p: any, cx: number, cy: number, cw: number, ch: number, forceCard = false) => {
+      if (!p) {
+        ctx.fillStyle = '#151515'; ctx.beginPath(); ctx.roundRect(cx, cy, cw, ch, 8); ctx.fill();
+        ctx.strokeStyle = '#2a2a2a'; ctx.lineWidth = 1; ctx.beginPath(); ctx.roundRect(cx, cy, cw, ch, 8); ctx.stroke();
+        return;
+      }
+      const img = forceCard ? null : cardImgs[p.id];
+      if (img) {
+        ctx.save(); ctx.beginPath(); ctx.roundRect(cx, cy, cw, ch, 8); ctx.clip();
+        ctx.drawImage(img, cx, cy, cw, ch); ctx.restore();
+      } else {
+        const rc = RANK_COLOR[p.ranking] || '#555';
+        ctx.fillStyle = '#1c1c1c'; ctx.beginPath(); ctx.roundRect(cx, cy, cw, ch, 8); ctx.fill();
+        ctx.strokeStyle = rc; ctx.lineWidth = 2; ctx.beginPath(); ctx.roundRect(cx, cy, cw, ch, 8); ctx.stroke();
+        ctx.textAlign = 'center';
+        ctx.fillStyle = rc; ctx.font = 'bold 13px Arial'; ctx.fillText(String(avgOverall(p)), cx + cw / 2, cy + 22);
+        ctx.fillStyle = '#eee'; ctx.font = 'bold 16px Arial'; ctx.fillText(initials(p.name), cx + cw / 2, cy + ch / 2 + 8);
+      }
+    };
+
+    const colTopY = y;
+
+    // ── ESQUERDA: Líder da Tabela / Bola de Ouro / Bola Murcha (empilhados) ──
+    const leftItems = [
+      { p: liderTabela, label: 'LÍDER DA TABELA', color: '#f59e0b', sub: liderTabela ? liderTabela.champ + '🏆 ' + liderTabela.vice + '🥈' : '' },
+      { p: bolaDeOuro, label: 'BOLA DE OURO', color: '#fbbf24', sub: bolaDeOuro ? bolaDeOuro.goals + '⚽ total' : '' },
+      { p: bolaMurcha, label: 'BOLA MURCHA', color: '#ef4444', sub: bolaMurcha ? bolaMurcha.champ + '🏆 ' + bolaMurcha.pres + '✅' : '' },
+    ];
+    leftItems.forEach((item, i) => {
+      const rowY = colTopY + i * (ROW_H + ROW_GAP);
+      const iconSize = ROW_H;
+      drawCard(item.p, PAD, rowY, iconSize, ROW_H);
+      const textX = PAD + iconSize + 10;
+      const textMaxW = LEFT_W - iconSize - 10;
+      ctx.textAlign = 'left';
+      ctx.fillStyle = item.color; ctx.font = 'bold 8px Arial';
+      ctx.fillText(item.label, textX, rowY + 16);
+      const name = item.p?.name || '—';
+      ctx.fillStyle = '#eee'; ctx.font = `bold ${name.length > 11 ? 11 : 13}px Arial`;
+      ctx.fillText(name.length > 16 ? name.slice(0, 15) + '…' : name, textX, rowY + 36, textMaxW);
+      ctx.fillStyle = '#888'; ctx.font = '10px Arial';
+      ctx.fillText(item.sub, textX, rowY + 52, textMaxW);
+    });
+
+    // ── DIREITA: Pikinha da Noite em destaque ──
+    const rightX = PAD + LEFT_W + COL_GAP;
+    const rightCardH = TWO_COL_H - 46;
+    const pikinhaSingle = currentTopScorer?.tied ? null : spotlightPlayers[0];
+    if (currentTopScorer?.tied) {
+      const n = currentTopScorer.tied.length;
+      const gap = 6;
+      const mw = (RIGHT_W - (n - 1) * gap) / n;
+      currentTopScorer.tied.forEach((tp: any, ti: number) => drawCard(tp, rightX + ti * (mw + gap), colTopY, mw, rightCardH, pikinhaUseCard));
+    } else {
+      const cardW = Math.min(RIGHT_W, Math.round(rightCardH * 0.62));
+      const cardX = rightX + (RIGHT_W - cardW) / 2;
+      drawCard(pikinhaSingle, cardX, colTopY, cardW, rightCardH, pikinhaUseCard);
+    }
+    const rTextY = colTopY + rightCardH;
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#4ade80'; ctx.font = 'bold 8px Arial';
+    ctx.fillText('PIKINHA DA NOITE', rightX + RIGHT_W / 2, rTextY + 12);
+    const pName = currentTopScorer?.tied ? currentTopScorer.tied.map((p: any) => p.name).join(' / ') : (currentTopScorer?.name || '—');
+    ctx.fillStyle = '#eee'; ctx.font = `bold ${pName.length > 14 ? 10 : 13}px Arial`;
+    ctx.fillText(pName, rightX + RIGHT_W / 2, rTextY + 28);
+    ctx.fillStyle = '#4ade80'; ctx.font = '11px Arial';
+    ctx.fillText(currentTopScorer ? currentTopScorer.goals + ' gols' : '', rightX + RIGHT_W / 2, rTextY + 42);
+
+    y = colTopY + TWO_COL_H + SECTION_GAP;
+
+    // Divider + tabela compacta
+    ctx.strokeStyle = '#222'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(PAD, y); ctx.lineTo(W - PAD, y); ctx.stroke();
+    y += SECTION_GAP - 4;
+
+    ctx.textAlign = 'left'; ctx.fillStyle = '#555'; ctx.font = 'bold 9px Arial';
+    ctx.fillText('CLASSIFICAÇÃO', PAD, y + 10);
+    y += TABLE_TITLE_H;
+    const cols = [PAD + 12, PAD + 44, W - 150, W - 112, W - 72, W - 32];
+    ['#', 'TIME', 'PTS', 'GF', 'GC', 'SG'].forEach((h, i) => {
+      ctx.textAlign = i === 1 ? 'left' : 'center';
+      ctx.fillStyle = '#444'; ctx.font = 'bold 8px Arial'; ctx.fillText(h, cols[i], y);
+    });
+    y += TABLE_HEADER_H - 8;
+    standings.forEach((s, i) => {
+      const rowY = y + i * TABLE_ROW_H;
+      if (i % 2 === 0) { ctx.fillStyle = '#ffffff06'; ctx.fillRect(PAD, rowY - 11, W - PAD * 2, TABLE_ROW_H); }
+      const cfg = TEAMS_CFG[s.team];
+      const rankColor = i === 0 ? '#f59e0b' : i === 1 ? '#94a3b8' : '#555';
+      ctx.textAlign = 'center'; ctx.fillStyle = rankColor; ctx.font = 'bold 11px Arial'; ctx.fillText(String(i + 1), cols[0], rowY + 3);
+      ctx.textAlign = 'left'; ctx.fillStyle = cfg.color; ctx.font = 'bold 10px Arial'; ctx.fillText(cfg.emoji + ' ' + cfg.label, cols[1], rowY + 3);
+      ctx.textAlign = 'center';
+      ctx.fillStyle = '#f0f0f0'; ctx.font = 'bold 12px Arial'; ctx.fillText(String(s.pts), cols[2], rowY + 3);
+      ctx.fillStyle = '#4ade80'; ctx.font = '10px Arial'; ctx.fillText(String(s.gf), cols[3], rowY + 3);
+      ctx.fillStyle = '#ef4444'; ctx.fillText(String(s.gc), cols[4], rowY + 3);
+      ctx.fillStyle = s.sg > 0 ? '#4ade80' : s.sg < 0 ? '#ef4444' : '#555';
+      ctx.font = 'bold 10px Arial'; ctx.fillText((s.sg > 0 ? '+' : '') + s.sg, cols[5], rowY + 3);
+    });
+    y += standings.length * TABLE_ROW_H + SECTION_GAP - 4;
+
+    ctx.strokeStyle = '#222'; ctx.beginPath(); ctx.moveTo(PAD, y); ctx.lineTo(W - PAD, y); ctx.stroke();
+    y += SECTION_GAP - 4;
+
+    // Final compacta
+    const cfgA = TEAMS_CFG[finale.tA], cfgB = TEAMS_CFG[finale.tB];
+    const isEmpateF = finale.sA !== '' && finale.sB !== '' && parseInt(finale.sA) === parseInt(finale.sB);
+    const pwCfg = finale.penaltyWinner ? TEAMS_CFG[finale.penaltyWinner] : null;
+    const FINAL_EXTRA = isEmpateF && pwCfg ? 16 : 0;
+    ctx.fillStyle = '#1a1200'; ctx.beginPath(); ctx.roundRect(PAD, y, W - PAD * 2, FINAL_H - 8 + FINAL_EXTRA, 10); ctx.fill();
+    ctx.strokeStyle = '#f59e0b33'; ctx.lineWidth = 1; ctx.beginPath(); ctx.roundRect(PAD, y, W - PAD * 2, FINAL_H - 8 + FINAL_EXTRA, 10); ctx.stroke();
+    ctx.textAlign = 'center'; ctx.fillStyle = '#f59e0b'; ctx.font = 'bold 10px Arial'; ctx.fillText('🏆 GRANDE FINAL', W / 2, y + 15);
+
+    const finalLineY = y + 40;
+    const leftTeamX = W / 2 - 50;
+    const scoreAX = W / 2 - 14;
+    const scoreBX = W / 2 + 14;
+    const rightTeamX = W / 2 + 50;
+
+    ctx.textAlign = 'right'; ctx.fillStyle = cfgA.color; ctx.font = 'bold 11px Arial'; ctx.fillText(cfgA.emoji + ' ' + cfgA.label, leftTeamX, finalLineY);
+    if (finale.sA !== '' && finale.sB !== '') {
+      ctx.textAlign = 'right'; ctx.fillStyle = cfgA.color; ctx.font = 'bold 24px Arial'; ctx.fillText(String(finale.sA), scoreAX, finalLineY + 8);
+      ctx.textAlign = 'center'; ctx.fillStyle = '#555'; ctx.font = '13px Arial'; ctx.fillText('×', W / 2, finalLineY + 5);
+      ctx.textAlign = 'left'; ctx.fillStyle = cfgB.color; ctx.font = 'bold 24px Arial'; ctx.fillText(String(finale.sB), scoreBX, finalLineY + 8);
+    } else {
+      ctx.textAlign = 'center'; ctx.fillStyle = '#555'; ctx.font = '13px Arial'; ctx.fillText('×', W / 2, finalLineY + 5);
+    }
+    ctx.textAlign = 'left'; ctx.fillStyle = cfgB.color; ctx.font = 'bold 11px Arial'; ctx.fillText(cfgB.emoji + ' ' + cfgB.label, rightTeamX, finalLineY);
+
+    if (isEmpateF && pwCfg) {
+      ctx.textAlign = 'center'; ctx.fillStyle = pwCfg.color; ctx.font = 'bold 10px Arial';
+      ctx.fillText(`⚽ Pênaltis: ${pwCfg.emoji} ${pwCfg.label} 🏆`, W / 2, finalLineY + 20);
+    }
+
+    canvas.toBlob((blob) => {
+      if (!blob) return;
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.download = 'resumo-fominhas-vertical-' + new Date().toISOString().slice(0, 10) + '.png';
       a.href = url; a.click();
       setTimeout(() => URL.revokeObjectURL(url), 5000);
     }, 'image/png');
@@ -2750,12 +2978,48 @@ const [loading, setLoading] = useState(true);
         </div>
       </div>
 
-      <button
-        onClick={exportResumo}
-        style={{ width: '100%', background: 'linear-gradient(135deg,#1a1200,#2a1e00)', border: '1px solid #f59e0b44', borderRadius: 10, padding: '12px', color: '#f59e0b', fontSize: 13, cursor: 'pointer', fontFamily: "'Barlow',sans-serif", fontWeight: 700, letterSpacing: 1, marginBottom: 12 }}
-      >
-        📸 EXPORTAR RESUMO DA RODADA
-      </button>
+      {(() => {
+        const pikinhaHasPhoto = currentTopScorer
+          ? (currentTopScorer.tied
+              ? currentTopScorer.tied.some((p: any) => p.cardUrl)
+              : !!currentTopScorer.cardUrl)
+          : false;
+        if (!pikinhaHasPhoto) return null;
+        return (
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#141414', border: '1px solid #2a2a2a', borderRadius: 10, padding: '8px 10px', marginBottom: 10 }}>
+            <span style={{ fontSize: 10, color: '#666', fontWeight: 700, letterSpacing: 0.5 }}>PIKINHA DA NOITE:</span>
+            <div style={{ display: 'flex', gap: 4 }}>
+              <button
+                onClick={() => setPikinhaUseCard(false)}
+                style={{ background: !pikinhaUseCard ? '#0d2a0d' : '#1a1a1a', border: `1px solid ${!pikinhaUseCard ? '#4ade80' : '#333'}`, color: !pikinhaUseCard ? '#4ade80' : '#666', fontSize: 10, fontWeight: 700, padding: '4px 10px', borderRadius: 6, cursor: 'pointer' }}
+              >
+                🖼️ FOTO
+              </button>
+              <button
+                onClick={() => setPikinhaUseCard(true)}
+                style={{ background: pikinhaUseCard ? '#0d2a0d' : '#1a1a1a', border: `1px solid ${pikinhaUseCard ? '#4ade80' : '#333'}`, color: pikinhaUseCard ? '#4ade80' : '#666', fontSize: 10, fontWeight: 700, padding: '4px 10px', borderRadius: 6, cursor: 'pointer' }}
+              >
+                🎴 CARD
+              </button>
+            </div>
+          </div>
+        );
+      })()}
+
+      <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+        <button
+          onClick={exportResumo}
+          style={{ flex: 1, background: 'linear-gradient(135deg,#1a1200,#2a1e00)', border: '1px solid #f59e0b44', borderRadius: 10, padding: '12px 8px', color: '#f59e0b', fontSize: 12, cursor: 'pointer', fontFamily: "'Barlow',sans-serif", fontWeight: 700, letterSpacing: 0.5 }}
+        >
+          📸 RESUMO
+        </button>
+        <button
+          onClick={exportResumoVertical}
+          style={{ flex: 1, background: 'linear-gradient(135deg,#0d1f2e,#0f2a3f)', border: '1px solid #38bdf844', borderRadius: 10, padding: '12px 8px', color: '#38bdf8', fontSize: 12, cursor: 'pointer', fontFamily: "'Barlow',sans-serif", fontWeight: 700, letterSpacing: 0.5 }}
+        >
+          📱 STORIES (VERTICAL)
+        </button>
+      </div>
 
       {drawn && (
         <div id="times-semana-export" style={{ background: '#0a0a0a', borderRadius: 12 }}>

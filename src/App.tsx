@@ -475,7 +475,13 @@ function suggestRanking(ata, def, vel, fis, dri, pas, overall?) {
 }
 
 function normalizeName(name = '') {
-  return name.trim().toLowerCase();
+  return name
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '') // remove acentos (á→a, ô→o, ç→c...)
+    .replace(/[.'-]/g, ' ')          // pontos, apóstrofos e hífens viram espaço
+    .replace(/\s+/g, ' ')            // colapsa espaços duplicados
+    .trim()
+    .toLowerCase();
 }
 
 function top4Avg(p) {
@@ -3201,6 +3207,11 @@ const [loading, setLoading] = useState(true);
       )
       .filter(Boolean);
 
+    // Jogadores que estão na Lista mas não têm cadastro correspondente — não entram no sorteio
+    const unmatchedSlots = lista.slots.filter(
+      (s) => !players.find((p) => normalizeName(p.name) === normalizeName(s.name))
+    );
+
     const sortTeam = (team) => {
       const real = team.filter(p => !p.isPending).sort((a, b) => avgOverall(b) - avgOverall(a));
       return [...real, ...team.filter(p => p.isPending)];
@@ -3270,6 +3281,52 @@ const [loading, setLoading] = useState(true);
               Configure a lista na aba 📋 Lista
             </div>
           </div>
+
+          {unmatchedSlots.length > 0 && (
+            <div style={{ background: '#1a1200', border: '1px solid #3a2a00', borderRadius: 10, padding: 10, marginBottom: 12 }}>
+              <div style={{ fontSize: 10, color: '#f59e0b', fontWeight: 700, letterSpacing: 1, marginBottom: 6 }}>
+                ⚠️ NA LISTA MAS SEM CADASTRO ({unmatchedSlots.length}) — NÃO ENTRAM NO SORTEIO
+              </div>
+              {unmatchedSlots.map((s, i) => (
+                <div
+                  key={i}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    padding: '6px 0',
+                    borderTop: i > 0 ? '1px solid #2a1e00' : 'none',
+                  }}
+                >
+                  <span style={{ fontSize: 13, fontWeight: 600, color: '#e0b050' }}>{s.name}</span>
+                  {isAdmin && (
+                    <button
+                      onClick={() =>
+                        openAddPlayerModal({
+                          name: s.name,
+                          tipo: 'avulso',
+                          title: 'NOVO AVULSO',
+                          onAdded: (player) => addPlayerToLista(player),
+                        })
+                      }
+                      style={{
+                        background: '#1a1000',
+                        border: '1px solid #3a2a00',
+                        color: '#f59e0b',
+                        borderRadius: 6,
+                        padding: '4px 10px',
+                        fontSize: 11,
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                      }}
+                    >
+                      + Cadastrar
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
           <div
             style={{
               background: '#0a140a',

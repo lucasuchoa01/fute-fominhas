@@ -6586,7 +6586,7 @@ const [loading, setLoading] = useState(true);
           onChange={(e) => setPwdVal(e.target.value)}
           onKeyDown={(e) => {
             if (e.key === 'Enter') {
-              if (pwdVal === 'fominhas' || pwdVal === 'admin') {
+              if (pwdVal === 'admin.fominhas') {
                 setIsAdmin(true);
                 setShowAdm(false);
                 setPwdVal('');
@@ -6624,7 +6624,7 @@ const [loading, setLoading] = useState(true);
             className="btn"
             style={{ flex: 1 }}
             onClick={() => {
-              if (pwdVal === 'fominhas' || pwdVal === 'admin') {
+              if (pwdVal === 'admin.fominhas') {
                 setIsAdmin(true);
                 setShowAdm(false);
                 setPwdVal('');
@@ -6634,16 +6634,6 @@ const [loading, setLoading] = useState(true);
           >
             Entrar
           </button>
-        </div>
-        <div
-          style={{
-            marginTop: 12,
-            fontSize: 10,
-            color: '#2a2a2a',
-            textAlign: 'center',
-          }}
-        >
-          senha padrão: fominhas
         </div>
       </div>
     </div>

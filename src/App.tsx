@@ -669,25 +669,34 @@ function calcStandings(rounds, teamKeys?: string[]) {
   const pts: Record<string, number> = {};
   const gf: Record<string, number> = {};
   const gc: Record<string, number> = {};
-  keys.forEach(k => { pts[k] = 0; gf[k] = 0; gc[k] = 0; });
+  const wins: Record<string, number> = {};
+  const draws: Record<string, number> = {};
+  const losses: Record<string, number> = {};
+  keys.forEach(k => { pts[k] = 0; gf[k] = 0; gc[k] = 0; wins[k] = 0; draws[k] = 0; losses[k] = 0; });
   rounds.forEach((r) =>
     r.pairs.forEach((p) => {
       const a = parseInt(p.sA),
         b = parseInt(p.sB);
       if (isNaN(a) || isNaN(b)) return;
-      if (!(p.tA in pts)) { pts[p.tA] = 0; gf[p.tA] = 0; gc[p.tA] = 0; }
-      if (!(p.tB in pts)) { pts[p.tB] = 0; gf[p.tB] = 0; gc[p.tB] = 0; }
+      if (!(p.tA in pts)) { pts[p.tA] = 0; gf[p.tA] = 0; gc[p.tA] = 0; wins[p.tA] = 0; draws[p.tA] = 0; losses[p.tA] = 0; }
+      if (!(p.tB in pts)) { pts[p.tB] = 0; gf[p.tB] = 0; gc[p.tB] = 0; wins[p.tB] = 0; draws[p.tB] = 0; losses[p.tB] = 0; }
       gf[p.tA] += a;
       gc[p.tA] += b;
       gf[p.tB] += b;
       gc[p.tB] += a;
       if (a > b) {
         pts[p.tA] += 3;
+        wins[p.tA] += 1;
+        losses[p.tB] += 1;
       } else if (a < b) {
         pts[p.tB] += 3;
+        wins[p.tB] += 1;
+        losses[p.tA] += 1;
       } else {
         pts[p.tA] += 1;
         pts[p.tB] += 1;
+        draws[p.tA] += 1;
+        draws[p.tB] += 1;
       }
     })
   );
@@ -695,6 +704,9 @@ function calcStandings(rounds, teamKeys?: string[]) {
     .map((t) => ({
       team: t,
       pts: pts[t],
+      wins: wins[t],
+      draws: draws[t],
+      losses: losses[t],
       gf: gf[t],
       gc: gc[t],
       sg: gf[t] - gc[t],
@@ -2398,8 +2410,8 @@ const [loading, setLoading] = useState(true);
     ctx.textAlign = 'left'; ctx.fillStyle = '#555'; ctx.font = 'bold 10px Arial';
     ctx.fillText('CLASSIFICAÇÃO', PAD, y + 12);
     y += 24;
-    const cols = [PAD + 14, PAD + 50, W - 160, W - 120, W - 76, W - 34];
-    ['#', 'TIME', 'PTS', 'GF', 'GC', 'SG'].forEach((h, i) => {
+    const cols = [PAD + 14, PAD + 50, W - 210, W - 178, W - 150, W - 122, W - 92, W - 62, W - 28];
+    ['#', 'TIME', 'PTS', 'V', 'E', 'D', 'GF', 'GC', 'SG'].forEach((h, i) => {
       ctx.textAlign = i === 1 ? 'left' : 'center';
       ctx.fillStyle = '#444'; ctx.font = 'bold 9px Arial'; ctx.fillText(h, cols[i], y);
     });
@@ -2413,10 +2425,13 @@ const [loading, setLoading] = useState(true);
       ctx.textAlign = 'left'; ctx.fillStyle = cfg.color; ctx.font = 'bold 12px Arial'; ctx.fillText(cfg.emoji + ' ' + cfg.label, cols[1], rowY + 4);
       ctx.textAlign = 'center';
       ctx.fillStyle = '#f0f0f0'; ctx.font = 'bold 14px Arial'; ctx.fillText(String(s.pts), cols[2], rowY + 4);
-      ctx.fillStyle = '#4ade80'; ctx.font = '12px Arial'; ctx.fillText(String(s.gf), cols[3], rowY + 4);
-      ctx.fillStyle = '#ef4444'; ctx.fillText(String(s.gc), cols[4], rowY + 4);
+      ctx.fillStyle = '#4ade80'; ctx.font = '12px Arial'; ctx.fillText(String(s.wins), cols[3], rowY + 4);
+      ctx.fillStyle = '#eab308'; ctx.fillText(String(s.draws), cols[4], rowY + 4);
+      ctx.fillStyle = '#ef4444'; ctx.fillText(String(s.losses), cols[5], rowY + 4);
+      ctx.fillStyle = '#4ade80'; ctx.font = '12px Arial'; ctx.fillText(String(s.gf), cols[6], rowY + 4);
+      ctx.fillStyle = '#ef4444'; ctx.fillText(String(s.gc), cols[7], rowY + 4);
       ctx.fillStyle = s.sg > 0 ? '#4ade80' : s.sg < 0 ? '#ef4444' : '#555';
-      ctx.font = 'bold 12px Arial'; ctx.fillText((s.sg > 0 ? '+' : '') + s.sg, cols[5], rowY + 4);
+      ctx.font = 'bold 12px Arial'; ctx.fillText((s.sg > 0 ? '+' : '') + s.sg, cols[8], rowY + 4);
     });
     y += standings.length * TABLE_ROW_H + SECTION_GAP;
 
@@ -4536,12 +4551,12 @@ const [loading, setLoading] = useState(true);
         <div style={{ fontSize: 10, color: '#444', letterSpacing: 1, margin: '8px 0 10px', background: '#141414', padding: '6px 12px', borderRadius: 6 }}>
           CLASSIFICAÇÃO
         </div>
-        <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+        <div className="card" style={{ padding: 0, overflowX: 'auto' }}>
+          <table style={{ width: '100%', minWidth: 440, borderCollapse: 'collapse', fontSize: 12 }}>
             <thead>
               <tr>
-                {['#', 'TIME', 'PTS', 'GF', 'GC', 'SG'].map((h) => (
-                  <th key={h} style={{ background: '#1a1a1a', padding: '8px 6px', textAlign: 'center', fontSize: 9, color: '#555', letterSpacing: 1, fontWeight: 700 }}>
+                {['#', 'TIME', 'PTS', 'V', 'E', 'D', 'GF', 'GC', 'SG'].map((h) => (
+                  <th key={h} style={{ background: '#1a1a1a', padding: '8px 3px', textAlign: 'center', fontSize: 9, color: '#555', letterSpacing: 1, fontWeight: 700 }}>
                     {h}
                   </th>
                 ))}
@@ -4564,8 +4579,11 @@ const [loading, setLoading] = useState(true);
                     <td style={{ padding: '9px 6px', textAlign: 'center', color: '#f0f0f0', fontFamily: "'Bebas Neue',sans-serif", fontSize: 16, fontWeight: 700 }}>
                       {s.pts}
                     </td>
-                    <td style={{ padding: '9px 6px', textAlign: 'center', color: '#4ade80' }}>{s.gf}</td>
-                    <td style={{ padding: '9px 6px', textAlign: 'center', color: '#ef4444' }}>{s.gc}</td>
+                    <td style={{ padding: '9px 4px', textAlign: 'center', color: '#4ade80' }}>{s.wins}</td>
+                    <td style={{ padding: '9px 4px', textAlign: 'center', color: '#eab308' }}>{s.draws}</td>
+                    <td style={{ padding: '9px 4px', textAlign: 'center', color: '#ef4444' }}>{s.losses}</td>
+                    <td style={{ padding: '9px 4px', textAlign: 'center', color: '#4ade80' }}>{s.gf}</td>
+                    <td style={{ padding: '9px 4px', textAlign: 'center', color: '#ef4444' }}>{s.gc}</td>
                     <td style={{ padding: '9px 6px', textAlign: 'center', color: s.sg > 0 ? '#4ade80' : s.sg < 0 ? '#ef4444' : '#555', fontWeight: 700 }}>
                       {s.sg > 0 ? '+' : ''}{s.sg}
                     </td>

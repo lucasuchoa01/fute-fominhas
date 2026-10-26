@@ -4551,12 +4551,23 @@ const [loading, setLoading] = useState(true);
         <div style={{ fontSize: 10, color: '#444', letterSpacing: 1, margin: '8px 0 10px', background: '#141414', padding: '6px 12px', borderRadius: 6 }}>
           CLASSIFICAÇÃO
         </div>
-        <div className="card" style={{ padding: 0, overflowX: 'auto' }}>
-          <table style={{ width: '100%', minWidth: 440, borderCollapse: 'collapse', fontSize: 12 }}>
+        <div className="card" style={{ padding: 0, overflowX: 'hidden' }}>
+          <table style={{ width: '100%', minWidth: 0, tableLayout: 'fixed', borderCollapse: 'collapse', fontSize: 11 }}>
+            <colgroup>
+              <col style={{ width: '4%' }} />
+              <col style={{ width: '32%' }} />
+              <col style={{ width: '8%' }} />
+              <col style={{ width: '7%' }} />
+              <col style={{ width: '7%' }} />
+              <col style={{ width: '7%' }} />
+              <col style={{ width: '10%' }} />
+              <col style={{ width: '10%' }} />
+              <col style={{ width: '15%' }} />
+            </colgroup>
             <thead>
               <tr>
                 {['#', 'TIME', 'PTS', 'V', 'E', 'D', 'GF', 'GC', 'SG'].map((h) => (
-                  <th key={h} style={{ background: '#1a1a1a', padding: '8px 3px', textAlign: 'center', fontSize: 9, color: '#555', letterSpacing: 1, fontWeight: 700 }}>
+                  <th key={h} style={{ background: '#1a1a1a', padding: '8px 1px', textAlign: 'center', fontSize: 9, color: '#555', letterSpacing: 0, fontWeight: 700, whiteSpace: 'nowrap' }}>
                     {h}
                   </th>
                 ))}
@@ -4568,23 +4579,23 @@ const [loading, setLoading] = useState(true);
                 if (!cfg) return null;
                 return (
                   <tr key={s.team}>
-                    <td style={{ padding: '9px 6px', textAlign: 'center', color: i === 0 ? '#f59e0b' : i === 1 ? '#94a3b8' : '#555', fontWeight: 700 }}>
+                    <td style={{ padding: '9px 1px', textAlign: 'center', color: i === 0 ? '#f59e0b' : i === 1 ? '#94a3b8' : '#555', fontWeight: 700, whiteSpace: 'nowrap' }}>
                       {i + 1}
                     </td>
-                    <td style={{ padding: '9px 6px', textAlign: 'center' }}>
-                      <span style={{ color: cfg.color, fontWeight: 700, fontSize: 11 }}>
+                    <td style={{ padding: '9px 1px', textAlign: 'center', overflow: 'hidden' }}>
+                      <span style={{ color: cfg.color, fontWeight: 700, fontSize: 10, whiteSpace: 'normal', overflowWrap: 'anywhere', lineHeight: 1.15, display: 'inline-block' }}>
                         {cfg.emoji} {cfg.label}
                       </span>
                     </td>
-                    <td style={{ padding: '9px 6px', textAlign: 'center', color: '#f0f0f0', fontFamily: "'Bebas Neue',sans-serif", fontSize: 16, fontWeight: 700 }}>
+                    <td style={{ padding: '9px 1px', textAlign: 'center', color: '#f0f0f0', fontFamily: "'Bebas Neue',sans-serif", fontSize: 15, fontWeight: 700 }}>
                       {s.pts}
                     </td>
-                    <td style={{ padding: '9px 4px', textAlign: 'center', color: '#4ade80' }}>{s.wins}</td>
-                    <td style={{ padding: '9px 4px', textAlign: 'center', color: '#eab308' }}>{s.draws}</td>
-                    <td style={{ padding: '9px 4px', textAlign: 'center', color: '#ef4444' }}>{s.losses}</td>
-                    <td style={{ padding: '9px 4px', textAlign: 'center', color: '#4ade80' }}>{s.gf}</td>
-                    <td style={{ padding: '9px 4px', textAlign: 'center', color: '#ef4444' }}>{s.gc}</td>
-                    <td style={{ padding: '9px 6px', textAlign: 'center', color: s.sg > 0 ? '#4ade80' : s.sg < 0 ? '#ef4444' : '#555', fontWeight: 700 }}>
+                    <td style={{ padding: '9px 1px', textAlign: 'center', color: '#4ade80' }}>{s.wins}</td>
+                    <td style={{ padding: '9px 1px', textAlign: 'center', color: '#eab308' }}>{s.draws}</td>
+                    <td style={{ padding: '9px 1px', textAlign: 'center', color: '#ef4444' }}>{s.losses}</td>
+                    <td style={{ padding: '9px 1px', textAlign: 'center', color: '#4ade80' }}>{s.gf}</td>
+                    <td style={{ padding: '9px 1px', textAlign: 'center', color: '#ef4444' }}>{s.gc}</td>
+                    <td style={{ padding: '9px 1px', textAlign: 'center', color: s.sg > 0 ? '#4ade80' : s.sg < 0 ? '#ef4444' : '#555', fontWeight: 700 }}>
                       {s.sg > 0 ? '+' : ''}{s.sg}
                     </td>
                   </tr>

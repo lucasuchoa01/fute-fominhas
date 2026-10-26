@@ -1532,6 +1532,10 @@ const [loading, setLoading] = useState(true);
   const [appliedMatch, setAppliedMatch] = useState(null);
   const [matchHistory, setMatchHistory] = useState([]);
   const [showHistory, setShowHistory] = useState(false);
+  const [partidaEditMode, setPartidaEditMode] = useState(false);
+  const [partidaSaving, setPartidaSaving] = useState(false);
+  const [partidaReloading, setPartidaReloading] = useState(false);
+  const partidaLastSavedRef = useRef<string>(''); // snapshot JSON do último estado salvo/carregado
   const [champTeamPhoto, setChampTeamPhoto] = useState<string | null>(null);
   const [cardModal, setCardModal] = useState(null);
   const [freeAgents, setFreeAgents] = useState([]);
@@ -1580,6 +1584,11 @@ const [loading, setLoading] = useState(true);
         if (fi) setFinale(fi);
         const sc = load('fm_scorers');
         if (sc) setScorers(sc);
+        partidaLastSavedRef.current = JSON.stringify({
+          rounds: ro || rounds,
+          finale: fi || finale,
+          scorers: sc || scorers,
+        });
         const co = load('fm_coletes');
         if (co) setColetes(co);
         const li = load('fm_lista');
@@ -1978,6 +1987,69 @@ const [loading, setLoading] = useState(true);
     alert('Partida salva e tabela atualizada.');
   };
 
+  // Há alterações locais ainda não salvas no Firebase (rodadas, final ou gols)?
+  const partidaIsDirty = () =>
+    JSON.stringify({ rounds, finale, scorers }) !== partidaLastSavedRef.current;
+
+  // Grava rodadas + final + gols de uma vez e volta a travar a edição
+  const commitPartidaEdits = async () => {
+    setPartidaSaving(true);
+    try {
+      await setDoc(
+        doc(db, 'app', 'state'),
+        {
+          fm_rounds: JSON.stringify(rounds),
+          fm_finale: JSON.stringify(finale),
+          fm_scorers: JSON.stringify(scorers),
+        },
+        { merge: true }
+      );
+      partidaLastSavedRef.current = JSON.stringify({ rounds, finale, scorers });
+      setPartidaEditMode(false);
+    } catch (e: any) {
+      alert('⚠️ Erro ao salvar. Verifique a conexão e tente de novo.\n\n' + (e?.message || ''));
+    } finally {
+      setPartidaSaving(false);
+    }
+  };
+
+  // Busca a versão mais recente no Firebase (útil quando outra pessoa salvou em outro celular)
+  const reloadPartidaData = async () => {
+    if (partidaIsDirty() && !confirm('Você tem alterações não salvas. Recarregar vai descartá-las. Continuar?')) return;
+    setPartidaReloading(true);
+    try {
+      const snap = await getDoc(doc(db, 'app', 'state'));
+      if (snap.exists()) {
+        const data = snap.data();
+        const parse = (k: string) => {
+          try { const v = data[k]; return v ? JSON.parse(v) : null; } catch { return null; }
+        };
+        const r = parse('fm_rounds') || rounds;
+        const f = parse('fm_finale') || finale;
+        const s = parse('fm_scorers') || scorers;
+        setRounds(r); setFinale(f); setScorers(s);
+        partidaLastSavedRef.current = JSON.stringify({ rounds: r, finale: f, scorers: s });
+      }
+      setPartidaEditMode(false);
+    } catch (e: any) {
+      alert('⚠️ Erro ao recarregar. Verifique a conexão.');
+    } finally {
+      setPartidaReloading(false);
+    }
+  };
+
+  // Sai do modo edição descartando o que não foi salvo
+  const cancelPartidaEdit = () => {
+    if (partidaIsDirty() && !confirm('Descartar as alterações não salvas?')) return;
+    try {
+      const s = JSON.parse(partidaLastSavedRef.current || '{}');
+      if (s.rounds) setRounds(s.rounds);
+      if (s.finale) setFinale(s.finale);
+      if (s.scorers) setScorers(s.scorers);
+    } catch {}
+    setPartidaEditMode(false);
+  };
+
   const undoAppliedMatch = () => {
     if (!appliedMatch) return;
     if (!confirm('Desfazer a última partida salva?\n\nOs gols, presenças, títulos e vices dela são retirados dos totais dos jogadores. Os placares na tela não são apagados — você pode corrigir e salvar de novo.')) return;
@@ -2026,7 +2098,7 @@ const [loading, setLoading] = useState(true);
     setDrawn(null); setRounds(freshRounds); setFinale(INIT_FINAL);
     setScorers({}); setLista(freshLista); setAppliedMatch(null); setChampTeamPhoto(null); setPikinhaOverride([]);
     await save('fm_drawn', null); await save('fm_rounds', freshRounds);
-    await save('fm_finale', INIT_FINAL); await save('fm_scorers', {});
+    await save('fm_finale', INIT_FINAL); await save('fm_scorers', {}); partidaLastSavedRef.current = JSON.stringify({ rounds: freshRounds, finale: INIT_FINAL, scorers: {} }); setPartidaEditMode(false);
     await save('fm_lista', freshLista); await save('fm_appliedMatch', null); await save('fm_pikinhaOverride', []);
     const ref2 = doc(db, 'app', 'state'); await setDoc(ref2, { fm_champTeamPhoto: null }, { merge: true });
   };
@@ -3879,7 +3951,7 @@ const [loading, setLoading] = useState(true);
               ),
             }
       );
-      updateRounds(nw);
+      setRounds(nw); // edição local — só vai pro Firebase quando apertar Salvar
     };
 
     const adjRoundScore = (roundIndex, pairIndex, side, delta) => {
@@ -3892,7 +3964,7 @@ const [loading, setLoading] = useState(true);
 
     const setFinalScore = (side, rawValue) => {
       const value = String(rawValue).replace(/\D/g, '').slice(0, 2);
-      updateFinale({ ...finale, [side]: value, penaltyWinner: '' });
+      setFinale({ ...finale, [side]: value, penaltyWinner: '' }); // edição local
     };
 
     const adjFinalScore = (side, delta) => {
@@ -3948,7 +4020,7 @@ const [loading, setLoading] = useState(true);
           </div>
 
           {/* Linha dos placares */}
-          {isAdmin ? (
+          {isAdmin && partidaEditMode ? (
             <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'center', gap: 4 }}>
               {/* Time A: − input + */}
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 5 }}>
@@ -4073,6 +4145,46 @@ const [loading, setLoading] = useState(true);
               <span style={{ fontSize: 10, color: '#4ade80', fontWeight: 700, letterSpacing: 1 }}>ADMIN</span>
             )}
           </div>
+        </div>
+
+        {/* ── BARRA DE EDIÇÃO / RECARREGAR ── */}
+        <div style={{ display: 'flex', gap: 6, alignItems: 'center', marginBottom: 12, background: partidaEditMode ? '#1a1200' : '#111', border: `1px solid ${partidaEditMode ? '#f59e0b55' : '#1f1f1f'}`, borderRadius: 10, padding: '8px 10px' }}>
+          {isAdmin && !partidaEditMode && (
+            <button
+              onClick={() => setPartidaEditMode(true)}
+              style={{ background: '#1a1200', border: '1px solid #f59e0b55', borderRadius: 8, padding: '7px 12px', color: '#f59e0b', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: "'Barlow',sans-serif" }}
+            >
+              ✏️ EDITAR
+            </button>
+          )}
+          {isAdmin && partidaEditMode && (
+            <>
+              <button
+                onClick={commitPartidaEdits}
+                disabled={partidaSaving}
+                style={{ background: 'linear-gradient(135deg,#16a34a,#4ade80)', border: 'none', borderRadius: 8, padding: '7px 14px', color: '#000', fontSize: 12, fontWeight: 800, cursor: 'pointer', fontFamily: "'Barlow',sans-serif", opacity: partidaSaving ? 0.6 : 1 }}
+              >
+                {partidaSaving ? '⏳ SALVANDO...' : '💾 SALVAR'}
+              </button>
+              <button
+                onClick={cancelPartidaEdit}
+                disabled={partidaSaving}
+                style={{ background: '#1a0a0a', border: '1px solid #3a1a1a', borderRadius: 8, padding: '7px 10px', color: '#ef4444', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: "'Barlow',sans-serif" }}
+              >
+                ✕ CANCELAR
+              </button>
+              {partidaIsDirty() && (
+                <span style={{ fontSize: 10, color: '#f59e0b', fontWeight: 700 }}>● NÃO SALVO</span>
+              )}
+            </>
+          )}
+          <button
+            onClick={reloadPartidaData}
+            disabled={partidaReloading || partidaSaving}
+            style={{ marginLeft: 'auto', background: '#0d1f2e', border: '1px solid #1e3a5f', borderRadius: 8, padding: '7px 12px', color: '#38bdf8', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: "'Barlow',sans-serif", opacity: partidaReloading ? 0.6 : 1 }}
+          >
+            {partidaReloading ? '⏳' : '🔄'} RECARREGAR
+          </button>
         </div>
 
         {/* ── MODAL DE IMPORTAÇÃO ── */}
@@ -4342,7 +4454,7 @@ const [loading, setLoading] = useState(true);
                             }
                           }
                           if (!log.length) throw new Error('Nenhum resultado reconhecido. Verifique o formato.');
-                          updateRounds(newRounds); updateFinale(newFinale);
+                          updateRounds(newRounds); updateFinale(newFinale); partidaLastSavedRef.current = JSON.stringify({ rounds: newRounds, finale: newFinale, scorers });
                           setImportResult('🎉 Resultados importados!\n\n' + log.join('\n'));
                         } catch (err: any) { setImportResult('❌ Erro: ' + (err.message || 'Verifique o formato')); }
                       }}>
@@ -4397,7 +4509,7 @@ const [loading, setLoading] = useState(true);
                             else notFound.push(name);
                           });
                           if (!Object.keys(newScorers).length) throw new Error('Nenhum jogador reconhecido. Verifique os nomes.');
-                          updateScorers(newScorers);
+                          updateScorers(newScorers); partidaLastSavedRef.current = JSON.stringify({ rounds, finale, scorers: newScorers });
                           const matched = Object.entries(newScorers).map(([id, g]) => {
                             const p = players.find(pl => pl.id === Number(id));
                             return `  ⚽ ${p?.name}: ${g} gol${g > 1 ? 's' : ''}`;
@@ -4471,9 +4583,9 @@ const [loading, setLoading] = useState(true);
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'center', gap: 8, marginBottom: 12 }}>
             <div style={{ textAlign: 'right' }}>
-              {isAdmin ? (
+              {isAdmin && partidaEditMode ? (
                 <select className="sel" style={{ marginBottom: 0, textAlign: 'center' }} value={finale.tA}
-                  onChange={(e) => updateFinale({ ...finale, tA: e.target.value, penaltyWinner: '' })}>
+                  onChange={(e) => setFinale({ ...finale, tA: e.target.value, penaltyWinner: '' })}>
                   {Object.entries(TEAMS_CFG).map(([k, c]) => (
                     <option key={k} value={k}>{c.label}</option>
                   ))}
@@ -4486,9 +4598,9 @@ const [loading, setLoading] = useState(true);
             </div>
             <span style={{ color: '#444', fontFamily: "'Bebas Neue',sans-serif", fontSize: 18, textAlign: 'center', width: 20 }}>×</span>
             <div style={{ textAlign: 'left' }}>
-              {isAdmin ? (
+              {isAdmin && partidaEditMode ? (
                 <select className="sel" style={{ marginBottom: 0 }} value={finale.tB}
-                  onChange={(e) => updateFinale({ ...finale, tB: e.target.value, penaltyWinner: '' })}>
+                  onChange={(e) => setFinale({ ...finale, tB: e.target.value, penaltyWinner: '' })}>
                   {Object.entries(TEAMS_CFG).map(([k, c]) => (
                     <option key={k} value={k}>{c.label}</option>
                   ))}
@@ -4502,7 +4614,7 @@ const [loading, setLoading] = useState(true);
           </div>
 
           {/* Placares da final */}
-          {isAdmin ? (
+          {isAdmin && partidaEditMode ? (
             <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'center', gap: 4 }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 5 }}>
                 <button type="button" onPointerDown={(e) => { e.preventDefault(); adjFinalScore('sA', -1); }}
@@ -4562,14 +4674,14 @@ const [loading, setLoading] = useState(true);
                   {[finale.tA, finale.tB].map((teamKey) => {
                     const cfg = TEAMS_CFG[teamKey];
                     const isWinner = pw === teamKey;
-                    const canClick = isAdmin;
+                    const canClick = isAdmin && partidaEditMode;
                     return (
                       <button
                         key={teamKey}
                         onClick={() => {
                           if (!canClick) return;
                           preserveContentScroll(() =>
-                            updateFinale({ ...finale, penaltyWinner: isWinner ? '' : teamKey })
+                            setFinale({ ...finale, penaltyWinner: isWinner ? '' : teamKey })
                           );
                         }}
                         style={{
@@ -4601,7 +4713,7 @@ const [loading, setLoading] = useState(true);
                     );
                   })}
                 </div>
-                {!pw && isAdmin && (
+                {!pw && isAdmin && partidaEditMode && (
                   <div style={{ fontSize: 11, color: '#5a4a00', textAlign: 'center', marginTop: 8, fontStyle: 'italic' }}>
                     Toque no time vencedor nos pênaltis
                   </div>
@@ -4692,15 +4804,15 @@ const [loading, setLoading] = useState(true);
                           {p.name}
                         </span>
                       </div>
-                      {isAdmin && (
+                      {isAdmin && partidaEditMode && (
                         <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
                           <button type="button"
-                            onClick={() => { preserveContentScroll(() => { if (g > 0) { const nw = { ...scorers, [p.id]: g - 1 }; updateScorers(nw); } }); }}
+                            onClick={() => { preserveContentScroll(() => { if (g > 0) { const nw = { ...scorers, [p.id]: g - 1 }; setScorers(nw); } }); }}
                             style={{ width: 28, height: 28, borderRadius: 6, background: '#1a1a1a', border: '1px solid #2a2a2a', color: '#888', fontSize: 16, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                             −
                           </button>
                           <button type="button"
-                            onClick={() => { preserveContentScroll(() => { const nw = { ...scorers, [p.id]: g + 1 }; updateScorers(nw); }); }}
+                            onClick={() => { preserveContentScroll(() => { const nw = { ...scorers, [p.id]: g + 1 }; setScorers(nw); }); }}
                             style={{ width: 28, height: 28, borderRadius: 6, background: '#1a3a1a', border: '1px solid #2d5a2d', color: '#4ade80', fontSize: 16, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                             +
                           </button>
@@ -4729,15 +4841,15 @@ const [loading, setLoading] = useState(true);
                         {p.name}
                       </span>
                     </div>
-                    {isAdmin && (
+                    {isAdmin && partidaEditMode && (
                       <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
                         <button type="button"
-                          onClick={() => { preserveContentScroll(() => { if (g > 0) { const nw = { ...scorers, [p.id]: g - 1 }; updateScorers(nw); } }); }}
+                          onClick={() => { preserveContentScroll(() => { if (g > 0) { const nw = { ...scorers, [p.id]: g - 1 }; setScorers(nw); } }); }}
                           style={{ width: 28, height: 28, borderRadius: 6, background: '#1a1a1a', border: '1px solid #2a2a2a', color: '#888', fontSize: 16, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                           −
                         </button>
                         <button type="button"
-                          onClick={() => { preserveContentScroll(() => { const nw = { ...scorers, [p.id]: g + 1 }; updateScorers(nw); }); }}
+                          onClick={() => { preserveContentScroll(() => { const nw = { ...scorers, [p.id]: g + 1 }; setScorers(nw); }); }}
                           style={{ width: 28, height: 28, borderRadius: 6, background: '#1a3a1a', border: '1px solid #2d5a2d', color: '#4ade80', fontSize: 16, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                           +
                         </button>
@@ -5169,6 +5281,7 @@ const [loading, setLoading] = useState(true);
                       setFinale(INIT_FINAL);
                       save('fm_numTimes', n);
                       save('fm_rounds', freshRounds);
+                      partidaLastSavedRef.current = JSON.stringify({ rounds: freshRounds, finale: INIT_FINAL, scorers });
                       save('fm_drawn', null);
                       save('fm_finale', INIT_FINAL);
                     }}

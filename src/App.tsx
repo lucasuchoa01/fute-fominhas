@@ -1500,7 +1500,7 @@ const [loading, setLoading] = useState(true);
   const [rounds, setRounds] = useState(INIT_ROUNDS);
   const [finale, setFinale] = useState(INIT_FINAL);
   const [scorers, setScorers] = useState({}); // { playerId: count }
-  const [coletes, setColetes] = useState({}); // { playerId: { washed: bool, date: string } }
+  const [coletes, setColetes] = useState({}); // { playerId: { washed: bool, date: string, lastDate: string, count: number } }
   const [isAdmin, setIsAdmin] = useState(false);
   const [pwdVal, setPwdVal] = useState('');
   const [pwdErr, setPwdErr] = useState('');
@@ -5196,18 +5196,85 @@ const [loading, setLoading] = useState(true);
 
     const toggleColete = (pid) => {
       if (!isAdmin) return;
-      const cur = coletes[pid] || { washed: false, date: '' };
+      const cur = coletes[pid] || { washed: false, date: '', lastDate: '', count: 0 };
       const _d = new Date(); const now = `${_d.getFullYear()}-${String(_d.getMonth()+1).padStart(2,'0')}-${String(_d.getDate()).padStart(2,'0')}`;
+      const turningWashedOn = !cur.washed;
+      const previousCount = Number(cur.count ?? ((cur.lastDate || cur.date) ? 1 : 0));
+      const lastDate = cur.lastDate || cur.date || '';
       updateColetes({
         ...coletes,
-        [pid]: { washed: !cur.washed, date: !cur.washed ? now : '' },
+        [pid]: {
+          ...cur,
+          washed: turningWashedOn,
+          date: turningWashedOn ? now : (cur.date || lastDate),
+          lastDate: turningWashedOn ? now : lastDate,
+          count: turningWashedOn ? previousCount + 1 : previousCount,
+        },
       });
     };
 
     const setColeteDate = (pid, val) => {
       if (!isAdmin) return;
-      const cur = coletes[pid] || { washed: false, date: '' };
-      updateColetes({ ...coletes, [pid]: { ...cur, date: val } });
+      const cur = coletes[pid] || { washed: false, date: '', lastDate: '', count: 0 };
+      updateColetes({ ...coletes, [pid]: { ...cur, date: val, lastDate: val } });
+    };
+
+    const exportColetesImage = () => {
+      const W = 720, PAD = 28, HEADER_H = 118, ROW_H = 66, FOOTER_H = 42, scale = 2;
+      const H = HEADER_H + mensColete.length * ROW_H + FOOTER_H;
+      const canvas = document.createElement('canvas');
+      canvas.width = W * scale; canvas.height = H * scale;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+      ctx.scale(scale, scale);
+      ctx.fillStyle = '#080b0e'; ctx.fillRect(0, 0, W, H);
+      ctx.fillStyle = '#101820'; ctx.fillRect(0, 0, W, HEADER_H);
+      ctx.fillStyle = '#4ade80'; ctx.font = 'bold 27px Arial'; ctx.textAlign = 'left';
+      ctx.fillText('FOMINHAS LEAGUE', PAD, 42);
+      ctx.fillStyle = '#f0f0f0'; ctx.font = 'bold 19px Arial';
+      ctx.fillText('CONTROLE DE LAVAGEM DOS COLETES', PAD, 75);
+      ctx.fillStyle = '#38bdf8'; ctx.font = '13px Arial';
+      ctx.fillText(`${washedCount} lavados agora  •  ${pendColete} pendentes  •  ${mensColete.length} mensalistas`, PAD, 99);
+      const dateX = 520, countX = 430;
+      ctx.fillStyle = '#1a2730'; ctx.fillRect(0, HEADER_H, W, 38);
+      ctx.fillStyle = '#91a4b5'; ctx.font = 'bold 12px Arial';
+      ctx.textAlign = 'left'; ctx.fillText('MENSALISTA', PAD, HEADER_H + 24);
+      ctx.textAlign = 'center'; ctx.fillText('LAVAGENS', countX, HEADER_H + 24);
+      ctx.textAlign = 'left'; ctx.fillText('ÚLTIMA LAVAGEM', dateX, HEADER_H + 24);
+      const fmtExportDate = (iso) => {
+        if (!iso) return 'Ainda não registrada';
+        const parts = iso.split('-');
+        return parts.length === 3 ? `${parts[2]}/${parts[1]}/${parts[0]}` : iso;
+      };
+      sortedByColete.forEach((player, i) => {
+        const y = HEADER_H + 38 + i * ROW_H;
+        ctx.fillStyle = i % 2 === 0 ? '#0d1318' : '#111a21'; ctx.fillRect(0, y, W, ROW_H);
+        ctx.fillStyle = '#24313a'; ctx.fillRect(PAD, y + ROW_H - 1, W - PAD * 2, 1);
+        const record = coletes[player.id] || {};
+        const count = Number(record.count ?? ((record.lastDate || record.date) ? 1 : 0));
+        const lastDate = record.lastDate || record.date || '';
+        ctx.textAlign = 'left'; ctx.fillStyle = '#f0f0f0'; ctx.font = 'bold 17px Arial';
+        ctx.fillText(player.name, PAD, y + 28);
+        ctx.fillStyle = record.washed ? '#38bdf8' : '#f87171'; ctx.font = '12px Arial';
+        ctx.fillText(record.washed ? '● LAVADO' : '● PENDENTE', PAD, y + 48);
+        ctx.textAlign = 'center'; ctx.fillStyle = '#f0f0f0'; ctx.font = 'bold 18px Arial';
+        ctx.fillText(String(count), countX, y + 37);
+        ctx.textAlign = 'left'; ctx.fillStyle = lastDate ? '#38bdf8' : '#6b7280'; ctx.font = '14px Arial';
+        ctx.fillText(fmtExportDate(lastDate), dateX, y + 37);
+      });
+      const fy = HEADER_H + 38 + mensColete.length * ROW_H;
+      ctx.fillStyle = '#080b0e'; ctx.fillRect(0, fy, W, FOOTER_H);
+      ctx.fillStyle = '#64748b'; ctx.font = '11px Arial'; ctx.textAlign = 'center';
+      ctx.fillText(`Atualizado em ${new Date().toLocaleDateString('pt-BR')} • Depois das Dez FS`, W / 2, fy + 25);
+      canvas.toBlob((blob) => {
+        if (!blob) return;
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `coletes-fominhas-${new Date().toISOString().slice(0,10)}.png`;
+        link.click();
+        URL.revokeObjectURL(url);
+      }, 'image/png');
     };
 
     const sortedByColete = [...mensColete].sort((a, b) => {
@@ -5756,9 +5823,19 @@ const [loading, setLoading] = useState(true);
                 }}
               />
             </div>
+            <button
+              type="button"
+              className="btn"
+              onClick={exportColetesImage}
+              style={{ marginBottom: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
+            >
+              🖼️ EXPORTAR LISTA EM IMAGEM
+            </button>
             <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
               {sortedByColete.map((p, i) => {
-                const c = coletes[p.id] || { washed: false, date: '' };
+                const c = coletes[p.id] || { washed: false, date: '', lastDate: '', count: 0 };
+                const washCount = Number(c.count ?? ((c.lastDate || c.date) ? 1 : 0));
+                const lastWashDate = c.lastDate || c.date || '';
                 return (
                   <div
                     key={p.id}
@@ -5815,38 +5892,12 @@ const [loading, setLoading] = useState(true);
                           >
                             {p.name}
                           </div>
-                          {c.washed && c.date ? (
-                            <div
-                              style={{
-                                fontSize: 10,
-                                color: '#0ea5e9',
-                                fontWeight: 700,
-                                marginTop: 1,
-                              }}
-                            >
-                              ✓ Lavado em {fmtDate(c.date)}
-                            </div>
-                          ) : c.washed ? (
-                            <div
-                              style={{
-                                fontSize: 10,
-                                color: '#0ea5e9',
-                                marginTop: 1,
-                              }}
-                            >
-                              ✓ Lavado
-                            </div>
-                          ) : (
-                            <div
-                              style={{
-                                fontSize: 10,
-                                color: '#444',
-                                marginTop: 1,
-                              }}
-                            >
-                              Pendente
-                            </div>
-                          )}
+                          <div style={{ fontSize: 10, color: c.washed ? '#38bdf8' : '#64748b', fontWeight: 700, marginTop: 1 }}>
+                            {c.washed ? '✓ Lavado neste ciclo' : 'Pendente neste ciclo'}
+                          </div>
+                          <div style={{ fontSize: 10, color: '#38bdf8', marginTop: 2 }}>
+                            👕 Lavagens: {washCount} · Última: {lastWashDate ? fmtDate(lastWashDate) : '—'}
+                          </div>
                         </div>
                       </div>
                       <button

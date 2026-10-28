@@ -5194,29 +5194,33 @@ const [loading, setLoading] = useState(true);
       });
     };
 
-    const toggleColete = (pid) => {
+    const todayISO = () => {
+      const d = new Date();
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    };
+
+    // Cada lavagem é um registro independente, com sua própria data.
+    const addColeteWash = (pid) => {
       if (!isAdmin) return;
-      const cur = coletes[pid] || { washed: false, date: '', lastDate: '', count: 0 };
-      const _d = new Date(); const now = `${_d.getFullYear()}-${String(_d.getMonth()+1).padStart(2,'0')}-${String(_d.getDate()).padStart(2,'0')}`;
-      const turningWashedOn = !cur.washed;
-      const previousCount = Number(cur.count ?? ((cur.lastDate || cur.date) ? 1 : 0));
-      const lastDate = cur.lastDate || cur.date || '';
+      const cur = coletes[pid] || { washed: false, date: '', lastDate: '', count: 0, washes: [] };
+      const washes = Array.isArray(cur.washes) ? [...cur.washes] : [];
+      const legacyCount = Number(cur.count ?? ((cur.lastDate || cur.date) ? 1 : 0));
+      const date = todayISO();
+      washes.push({ id: `${Date.now()}-${washes.length}`, date });
       updateColetes({
         ...coletes,
-        [pid]: {
-          ...cur,
-          washed: turningWashedOn,
-          date: turningWashedOn ? now : (cur.date || lastDate),
-          lastDate: turningWashedOn ? now : lastDate,
-          count: turningWashedOn ? previousCount + 1 : previousCount,
-        },
+        [pid]: { ...cur, washed: true, date, lastDate: date, count: Math.max(legacyCount, washes.length), washes },
       });
     };
 
-    const setColeteDate = (pid, val) => {
+    const setColeteWashDate = (pid, washIndex, val) => {
       if (!isAdmin) return;
-      const cur = coletes[pid] || { washed: false, date: '', lastDate: '', count: 0 };
-      updateColetes({ ...coletes, [pid]: { ...cur, date: val, lastDate: val } });
+      const cur = coletes[pid] || { washed: false, date: '', lastDate: '', count: 0, washes: [] };
+      const washes = Array.isArray(cur.washes) ? [...cur.washes] : [];
+      if (!washes[washIndex]) return;
+      washes[washIndex] = { ...washes[washIndex], date: val };
+      const lastDate = washes.map(w => w.date).filter(Boolean).sort().at(-1) || cur.lastDate || cur.date || '';
+      updateColetes({ ...coletes, [pid]: { ...cur, washes, date: lastDate, lastDate } });
     };
 
     const exportColetesImage = () => {
@@ -5834,8 +5838,9 @@ const [loading, setLoading] = useState(true);
             <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
               {sortedByColete.map((p, i) => {
                 const c = coletes[p.id] || { washed: false, date: '', lastDate: '', count: 0 };
-                const washCount = Number(c.count ?? ((c.lastDate || c.date) ? 1 : 0));
-                const lastWashDate = c.lastDate || c.date || '';
+                const washHistory = Array.isArray(c.washes) ? c.washes : [];
+                const washCount = Math.max(Number(c.count ?? ((c.lastDate || c.date) ? 1 : 0)), washHistory.length);
+                const lastWashDate = washHistory.map(w => w.date).filter(Boolean).sort().at(-1) || c.lastDate || c.date || '';
                 return (
                   <div
                     key={p.id}
@@ -5900,54 +5905,36 @@ const [loading, setLoading] = useState(true);
                           </div>
                         </div>
                       </div>
-                      <button
-                        type="button"
-                        className={`tog ${c.washed ? 'on' : 'off'}`}
-                        style={c.washed ? { background: '#0284c7' } : {}}
-                        disabled={!isAdmin}
-                        onClick={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          toggleColete(p.id);
-                        }}
-                      />
+                      <span style={{ fontSize: 10, fontWeight: 700, color: c.washed ? '#38bdf8' : '#64748b', background: c.washed ? '#0c2a3a' : '#1a1a1a', border: `1px solid ${c.washed ? '#0ea5e9' : '#2a2a2a'}`, borderRadius: 20, padding: '6px 9px', whiteSpace: 'nowrap' }}>
+                        {c.washed ? 'LAVADO' : 'PENDENTE'}
+                      </span>
                     </div>
-                    {c.washed && isAdmin && (
-                      <div
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: 8,
-                          marginLeft: 48,
-                        }}
-                      >
-                        <span
-                          style={{
-                            fontSize: 10,
-                            color: '#4a7a9a',
-                            letterSpacing: 0.5,
-                            whiteSpace: 'nowrap',
-                          }}
+                    {isAdmin && (
+                      <div style={{ marginLeft: 48, marginTop: 8 }}>
+                        <button
+                          type="button"
+                          className="btn2"
+                          onClick={() => addColeteWash(p.id)}
+                          style={{ width: '100%', marginBottom: washHistory.length ? 8 : 0, display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 6 }}
                         >
-                          DATA:
-                        </span>
-                        <input
-                          type="date"
-                          value={c.date || ''}
-                          onClick={(e) => e.stopPropagation()}
-                          onChange={(e) => setColeteDate(p.id, e.target.value)}
-                          style={{
-                            background: '#0a1e2e',
-                            border: '1px solid #1e3a5f',
-                            borderRadius: 6,
-                            padding: '4px 8px',
-                            color: '#38bdf8',
-                            fontSize: 12,
-                            fontFamily: "'Barlow',sans-serif",
-                            outline: 'none',
-                            flex: 1,
-                          }}
-                        />
+                          ＋ ADICIONAR NOVA LAVAGEM
+                        </button>
+                        {washHistory.length > 0 && (
+                          <div style={{ background: '#071520', border: '1px solid #123047', borderRadius: 8, padding: '8px 10px' }}>
+                            <div style={{ fontSize: 10, color: '#38bdf8', fontWeight: 700, marginBottom: 6 }}>HISTÓRICO DE LAVAGENS</div>
+                            {[...washHistory].map((wash, idx) => ({ wash, idx })).reverse().map(({ wash, idx }) => (
+                              <div key={wash.id || idx} style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 5 }}>
+                                <span style={{ fontSize: 11, color: '#94a3b8', width: 76, flexShrink: 0 }}>Lavagem {idx + 1}</span>
+                                <input
+                                  type="date"
+                                  value={wash.date || ''}
+                                  onChange={(e) => setColeteWashDate(p.id, idx, e.target.value)}
+                                  style={{ background: '#0a1e2e', border: '1px solid #1e3a5f', borderRadius: 6, padding: '4px 8px', color: '#38bdf8', fontSize: 12, fontFamily: "'Barlow',sans-serif", outline: 'none', flex: 1, minWidth: 0 }}
+                                />
+                              </div>
+                            ))}
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>

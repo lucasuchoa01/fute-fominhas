@@ -5223,6 +5223,30 @@ const [loading, setLoading] = useState(true);
       updateColetes({ ...coletes, [pid]: { ...cur, washes, date: lastDate, lastDate } });
     };
 
+    // Permite corrigir uma lavagem registrada por engano, removendo apenas aquele registro.
+    const removeColeteWash = (pid, washIndex) => {
+      if (!isAdmin) return;
+      const cur = coletes[pid] || { washed: false, date: '', lastDate: '', count: 0, washes: [] };
+      const washes = Array.isArray(cur.washes) ? [...cur.washes] : [];
+      if (!washes[washIndex]) return;
+      const removed = washes[washIndex];
+      const remaining = washes.filter((_, idx) => idx !== washIndex);
+      const lastDate = remaining.map(w => w.date).filter(Boolean).sort().at(-1) || '';
+      const currentCycleWashRemoved = Boolean(cur.washed) && (!removed.date || removed.date === (cur.lastDate || cur.date) || remaining.length === 0);
+      const oldCount = Number(cur.count ?? washes.length);
+      updateColetes({
+        ...coletes,
+        [pid]: {
+          ...cur,
+          washes: remaining,
+          count: Math.max(0, oldCount - 1),
+          washed: currentCycleWashRemoved ? false : cur.washed,
+          date: lastDate,
+          lastDate,
+        },
+      });
+    };
+
     const exportColetesImage = () => {
       const W = 720, PAD = 28, HEADER_H = 118, ROW_H = 66, FOOTER_H = 42, scale = 2;
       const H = HEADER_H + mensColete.length * ROW_H + FOOTER_H;
@@ -5927,10 +5951,22 @@ const [loading, setLoading] = useState(true);
                                 <span style={{ fontSize: 11, color: '#94a3b8', width: 76, flexShrink: 0 }}>Lavagem {idx + 1}</span>
                                 <input
                                   type="date"
+                                  aria-label={`Data da lavagem ${idx + 1} de ${p.name}`}
                                   value={wash.date || ''}
                                   onChange={(e) => setColeteWashDate(p.id, idx, e.target.value)}
                                   style={{ background: '#0a1e2e', border: '1px solid #1e3a5f', borderRadius: 6, padding: '4px 8px', color: '#38bdf8', fontSize: 12, fontFamily: "'Barlow',sans-serif", outline: 'none', flex: 1, minWidth: 0 }}
                                 />
+                                <button
+                                  type="button"
+                                  title="Excluir esta lavagem registrada por engano"
+                                  aria-label={`Excluir lavagem ${idx + 1} de ${p.name}`}
+                                  onClick={() => {
+                                    if (window.confirm(`Excluir a lavagem ${idx + 1} de ${p.name}?`)) removeColeteWash(p.id, idx);
+                                  }}
+                                  style={{ background: '#2a1010', border: '1px solid #7f1d1d', color: '#f87171', borderRadius: 6, padding: '5px 8px', fontSize: 11, cursor: 'pointer', flexShrink: 0 }}
+                                >
+                                  ✕
+                                </button>
                               </div>
                             ))}
                           </div>
